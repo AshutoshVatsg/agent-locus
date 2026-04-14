@@ -110,6 +110,23 @@ class LocusClient:
             "body": body,
         })
 
+    # ── checkout (merchant) ──
+
+    async def create_checkout_session(self, *, amount: str, description: str,
+                                      success_url: str, cancel_url: str,
+                                      order_id: str) -> dict:
+        return await self._post("/checkout/sessions", {
+            "amount": amount,
+            "currency": "USDC",
+            "description": description,
+            "successUrl": success_url,
+            "cancelUrl": cancel_url,
+            "metadata": {"order_id": order_id},
+        })
+
+    async def get_checkout_session(self, session_id: str) -> dict:
+        return await self._get(f"/checkout/sessions/{session_id}")
+
     # ── transactions ──
 
     async def get_transactions(self, limit: int = 50) -> dict:

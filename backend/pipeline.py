@@ -1,5 +1,5 @@
 """
-Six-stage agent pipeline.
+Six-stage agent pipeline with tier support.
 
 Stages 1-5 (data gathering) run in parallel.
 Stage 6 (synthesis) runs after all data is collected.
@@ -13,6 +13,7 @@ from datetime import datetime, timezone
 from locus_client import LocusClient
 from prompts import SYNTHESIS_SYSTEM, build_synthesis_prompt
 from database import update_order
+from config import TIER_CONFIG
 
 log = logging.getLogger("pipeline")
 
@@ -28,9 +29,11 @@ COSTS = {
 }
 
 
-async def run_pipeline(order_id: str, company: str, domain: str, context: str):
+async def run_pipeline(order_id: str, company: str, domain: str, context: str, tier: str = "pro"):
     locus = LocusClient()
     costs: dict[str, float] = {}
+    cfg = TIER_CONFIG.get(tier, TIER_CONFIG["pro"])
+    apis = cfg["apis"]
 
     try:
         # ── resolve domain ──
@@ -40,26 +43,37 @@ async def run_pipeline(order_id: str, company: str, domain: str, context: str):
 
         url = f"https://{domain}" if domain else None
 
-        # ── stages 1-5: parallel data gathering ──
+        # ── stages 1-5: parallel data gathering (based on tier) ──
+        run_people   = "apollo_people" in apis and bool(domain)
+        run_hunter   = "hunter"        in apis and bool(domain)
+        run_builtwith= "builtwith"     in apis and bool(domain)
+        run_firecrawl= "firecrawl"     in apis and bool(url)
+        run_tavily_c = "tavily_competitors" in apis  # elite only
+
         (company_data, people_data, hunter_data,
-         tech_data, website_data, news_data) = await asyncio.gather(
+         tech_data, website_data, news_data, competitor_data) = await asyncio.gather(
             _safe(locus.apollo_org_enrichment(domain=domain, name=company)),
-            _safe(locus.apollo_people_search(domain)) if domain else _noop(),
-            _safe(locus.hunter_domain_search(domain)) if domain else _noop(),
-            _safe(locus.builtwith_lookup(domain))     if domain else _noop(),
-            _safe(locus.firecrawl_scrape(url))         if url    else _noop(),
-            _safe(locus.tavily_search(f"{company} latest news")),
+            _safe(locus.apollo_people_search(domain))                       if run_people    else _noop(),
+            _safe(locus.hunter_domain_search(domain))                       if run_hunter    else _noop(),
+            _safe(locus.builtwith_lookup(domain))                           if run_builtwith else _noop(),
+            _safe(locus.firecrawl_scrape(url))                              if run_firecrawl else _noop(),
+            _safe(locus.tavily_search(f"{company} latest news funding", max_results=cfg["tavily_results"])),
+            _safe(locus.tavily_search(f"{company} competitors alternatives", max_results=5)) if run_tavily_c else _noop(),
         )
 
         # track costs for stages that ran
-        if domain:
-            costs["apollo_org"]    = COSTS["apollo_org"]
+        costs["apollo_org"] = COSTS["apollo_org"]
+        if run_people:
             costs["apollo_people"] = COSTS["apollo_people"]
-            costs["hunter"]        = COSTS["hunter"]
-            costs["builtwith"]     = COSTS["builtwith"]
-        if url:
+        if run_hunter:
+            costs["hunter"] = COSTS["hunter"]
+        if run_builtwith:
+            costs["builtwith"] = COSTS["builtwith"]
+        if run_firecrawl:
             costs["firecrawl"] = COSTS["firecrawl"]
         costs["tavily"] = COSTS["tavily"]
+        if run_tavily_c:
+            costs["tavily_competitors"] = COSTS["tavily"]
 
         people_combined = {"apollo": people_data, "hunter": hunter_data}
 
@@ -82,13 +96,15 @@ async def run_pipeline(order_id: str, company: str, domain: str, context: str):
             tech_data=tech_data,
             website_data=website_data,
             news_data=news_data,
+            competitor_data=competitor_data if run_tavily_c else {},
+            tier=tier,
         )
 
         synthesis = await locus.openai_chat(
             system=SYNTHESIS_SYSTEM,
             user=user_prompt,
-            model="gpt-4o",
-            max_tokens=4000,
+            model=cfg["model"],
+            max_tokens=cfg["max_tokens"],
         )
         costs["openai"] = COSTS["openai"]
 
@@ -102,7 +118,7 @@ async def run_pipeline(order_id: str, company: str, domain: str, context: str):
             cost_breakdown=json.dumps(costs),
             completed_at=datetime.now(timezone.utc).isoformat(),
         )
-        log.info("Order %s completed — cost $%.4f", order_id, total_cost)
+        log.info("Order %s (%s tier) completed — cost $%.4f", order_id, tier, total_cost)
 
     except Exception as exc:
         log.exception("Pipeline failed for %s", order_id)
@@ -135,7 +151,6 @@ async def _resolve_domain(locus: LocusClient, company: str) -> str:
                 return d
     except Exception:
         pass
-    # fallback: naive guess
     return company.lower().replace(" ", "") + ".com"
 
 

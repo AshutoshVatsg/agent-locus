@@ -1,0 +1,34 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:beta.paywithlocus.com)",
+      "Read(//home/ashutosh/.locus/skills/**)",
+      "Bash(curl:*)",
+      "Bash(pip install:*)",
+      "Bash(python -c \"from main import app; print\\('Import OK'\\)\")",
+      "Bash(python3:*)",
+      "Bash(pkill -f \"uvicorn main:app\")",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Bash(git remote:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "WebFetch(domain:docs.paywithlocus.com)",
+      "WebSearch",
+      "WebFetch(domain:www.paywithlocus.com)",
+      "WebFetch(domain:paywithlocus.com)",
+      "Bash(mkdir -p ~/.locus/skills)",
+      "Bash(curl -s https://beta.paywithlocus.com/skill.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/onboarding.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/agentmail.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/laso.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/checkout.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/heartbeat.md)",
+      "Bash(curl -s https://beta.paywithlocus.com/skill.json)",
+      "WebFetch(domain:beta.buildwithlocus.com)",
+      "Bash(.venv/bin/pip install:*)",
+      "Bash(../.venv/bin/uvicorn main:app --reload --port 8000)"
+    ]
+  }
+}

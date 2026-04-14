@@ -9,21 +9,30 @@
   <style>
     .loader-lg{width:40px;height:40px;border:4px solid #4f46e5;border-bottom-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
-    /* markdown prose */
-    .prose h1,.prose h2,.prose h3{color:#e2e8f0;margin-top:1.5em;margin-bottom:.5em}
-    .prose h1{font-size:1.5rem;font-weight:800}
-    .prose h2{font-size:1.25rem;font-weight:700;border-bottom:1px solid #334155;padding-bottom:.3em}
-    .prose h3{font-size:1.1rem;font-weight:600}
-    .prose p{margin:.5em 0;color:#cbd5e1;line-height:1.7}
-    .prose ul,.prose ol{margin:.5em 0 .5em 1.5em;color:#cbd5e1}
-    .prose li{margin:.25em 0}
-    .prose strong{color:#f1f5f9}
-    .prose table{width:100%;border-collapse:collapse;margin:1em 0;font-size:.9rem}
-    .prose th{text-align:left;padding:.5em;background:#1e293b;color:#94a3b8;border-bottom:1px solid #334155}
-    .prose td{padding:.5em;border-bottom:1px solid #1e293b;color:#cbd5e1}
-    .prose code{background:#1e293b;padding:.15em .4em;border-radius:4px;font-size:.9em}
-    .prose blockquote{border-left:3px solid #4f46e5;padding-left:1em;color:#94a3b8;margin:1em 0}
-    .prose a{color:#818cf8;text-decoration:underline}
+
+    /* Section card prose */
+    .section-body h1,.section-body h2,.section-body h3{color:#e2e8f0;margin-top:1em;margin-bottom:.4em}
+    .section-body h2{font-size:1.1rem;font-weight:700;border-bottom:1px solid #334155;padding-bottom:.3em}
+    .section-body h3{font-size:1rem;font-weight:600}
+    .section-body p{margin:.4em 0;color:#cbd5e1;line-height:1.7}
+    .section-body ul,.section-body ol{margin:.4em 0 .4em 1.4em;color:#cbd5e1}
+    .section-body li{margin:.2em 0}
+    .section-body strong{color:#f1f5f9}
+    .section-body table{width:100%;border-collapse:collapse;margin:.8em 0;font-size:.85rem}
+    .section-body th{text-align:left;padding:.4em .6em;background:#1e293b;color:#94a3b8;border-bottom:1px solid #334155}
+    .section-body td{padding:.4em .6em;border-bottom:1px solid #1e293b;color:#cbd5e1}
+    .section-body code{background:#1e293b;padding:.1em .35em;border-radius:4px;font-size:.88em}
+    .section-body blockquote{border-left:3px solid #4f46e5;padding-left:.8em;color:#94a3b8;margin:.8em 0}
+    .section-body a{color:#818cf8;text-decoration:underline}
+
+    /* Print styles */
+    @media print {
+      nav, #actionBar, #statusBar, #stages, #metaCardActions, footer { display: none !important; }
+      body { background: white !important; color: black !important; }
+      .section-card { border: 1px solid #ddd !important; break-inside: avoid; margin-bottom: 1rem; }
+      .section-body p, .section-body li, .section-body td { color: #333 !important; }
+      .section-body th { background: #f5f5f5 !important; color: #333 !important; }
+    }
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -46,27 +55,48 @@
       <div id="statusIcon" class="loader-lg"></div>
       <div>
         <div id="statusTitle" class="font-semibold text-lg">Generating briefing…</div>
-        <div id="statusSub" class="text-sm text-slate-400">Your agent is gathering intelligence from 6 sources. This takes ~30 seconds.</div>
+        <div id="statusSub" class="text-sm text-slate-400">Your agent is gathering intelligence. This takes ~30 seconds.</div>
       </div>
     </div>
 
-    <!-- Meta card (shown when complete) -->
-    <div id="metaCard" class="hidden mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4 grid grid-cols-2 sm:grid-cols-4 gap-4 text-center text-sm">
-      <div>
-        <div class="text-slate-500">Company</div>
-        <div id="metaCompany" class="font-semibold text-white">—</div>
+    <!-- Meta card -->
+    <div id="metaCard" class="hidden mb-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center text-sm mb-4">
+        <div>
+          <div class="text-slate-500">Company</div>
+          <div id="metaCompany" class="font-semibold text-white">—</div>
+        </div>
+        <div>
+          <div class="text-slate-500">Domain</div>
+          <div id="metaDomain" class="font-semibold text-indigo-400">—</div>
+        </div>
+        <div>
+          <div class="text-slate-500">Plan</div>
+          <div id="metaTier" class="font-semibold text-indigo-300">—</div>
+        </div>
+        <div>
+          <div class="text-slate-500">You Paid</div>
+          <div id="metaCost" class="font-semibold text-emerald-400">—</div>
+        </div>
+        <div>
+          <div class="text-slate-500">Status</div>
+          <div id="metaStatus" class="font-semibold">—</div>
+        </div>
       </div>
-      <div>
-        <div class="text-slate-500">Domain</div>
-        <div id="metaDomain" class="font-semibold text-indigo-400">—</div>
-      </div>
-      <div>
-        <div class="text-slate-500">API Cost</div>
-        <div id="metaCost" class="font-semibold text-emerald-400">—</div>
-      </div>
-      <div>
-        <div class="text-slate-500">Status</div>
-        <div id="metaStatus" class="font-semibold">—</div>
+      <!-- Action buttons -->
+      <div id="metaCardActions" class="flex flex-wrap gap-2 justify-center border-t border-slate-800 pt-3">
+        <button onclick="window.print()"
+          class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition">
+          🖨 Save as PDF
+        </button>
+        <button id="emailBtn" onclick="sendEmail()"
+          class="flex items-center gap-1.5 px-4 py-2 bg-indigo-700 hover:bg-indigo-600 text-sm rounded-lg transition">
+          ✉ Send to my email
+        </button>
+        <button onclick="copyAll()"
+          class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition">
+          📋 Copy full report
+        </button>
       </div>
     </div>
 
@@ -84,9 +114,8 @@
       </div>
     </div>
 
-    <!-- Report content -->
-    <div id="reportContent" class="hidden bg-slate-900 border border-slate-800 rounded-2xl p-6 md:p-10 prose">
-    </div>
+    <!-- Structured Section Cards (shown when complete) -->
+    <div id="reportSections" class="hidden space-y-4"></div>
 
     <!-- Error -->
     <div id="errorBlock" class="hidden bg-red-900/30 border border-red-800 rounded-xl p-6 text-center">
@@ -103,15 +132,39 @@
   <script>
     const orderId = window.location.pathname.split('/').pop();
     let pollTimer = null;
+    let orderData = null;
+
+    // Section definitions: heading text → icon + accent colour
+    const SECTION_META = {
+      'company snapshot':        { icon: '🏢', color: 'indigo' },
+      'key decision makers':     { icon: '👥', color: 'violet' },
+      'technology stack':        { icon: '🛠', color: 'cyan' },
+      'product & market positioning': { icon: '📊', color: 'blue' },
+      'recent signals':          { icon: '📰', color: 'amber' },
+      'competitive landscape':   { icon: '⚔️', color: 'rose' },
+      'account intelligence summary': { icon: '🔍', color: 'purple' },
+      'recommended talking points':   { icon: '🎯', color: 'emerald' },
+    };
+
+    const COLOR_CLASSES = {
+      indigo:  ['border-indigo-700/50',  'bg-indigo-600/20', 'text-indigo-300'],
+      violet:  ['border-violet-700/50',  'bg-violet-600/20', 'text-violet-300'],
+      cyan:    ['border-cyan-700/50',    'bg-cyan-600/20',   'text-cyan-300'],
+      blue:    ['border-blue-700/50',    'bg-blue-600/20',   'text-blue-300'],
+      amber:   ['border-amber-700/50',   'bg-amber-600/20',  'text-amber-300'],
+      rose:    ['border-rose-700/50',    'bg-rose-600/20',   'text-rose-300'],
+      purple:  ['border-purple-700/50',  'bg-purple-600/20', 'text-purple-300'],
+      emerald: ['border-emerald-700/50', 'bg-emerald-600/20','text-emerald-300'],
+      slate:   ['border-slate-700/50',   'bg-slate-700/20',  'text-slate-300'],
+    };
 
     async function loadOrder() {
       try {
         const res = await fetch(`/api/orders/${orderId}`);
         if (!res.ok) throw new Error('Order not found');
-        const o = await res.json();
-        render(o);
-
-        if (o.status === 'PROCESSING') {
+        orderData = await res.json();
+        render(orderData);
+        if (orderData.status === 'PROCESSING' || orderData.status === 'AWAITING_PAYMENT') {
           pollTimer = setTimeout(loadOrder, 2500);
         }
       } catch (e) {
@@ -120,42 +173,45 @@
     }
 
     function render(o) {
-      // meta
+      const tierLabels = { starter: 'Starter', pro: 'Pro', elite: 'Elite' };
       document.getElementById('metaCompany').textContent = o.company_name;
       document.getElementById('metaDomain').textContent  = o.company_domain || '—';
-      document.getElementById('metaCost').textContent     = '$' + (o.total_cost || 0).toFixed(4);
+      document.getElementById('metaTier').textContent    = tierLabels[o.tier] || o.tier || 'Pro';
+      document.getElementById('metaCost').textContent    = '$' + (o.revenue || 0).toFixed(2) + ' USDC';
 
-      if (o.status === 'COMPLETED') {
+      if (o.status === 'AWAITING_PAYMENT') {
+        document.getElementById('statusBar').classList.remove('hidden');
+        document.getElementById('statusTitle').textContent = 'Verifying payment…';
+        document.getElementById('statusSub').textContent   = 'Waiting for USDC payment confirmation on Base. This takes 10–30 seconds.';
+        document.getElementById('stages').classList.add('hidden');
+
+      } else if (o.status === 'COMPLETED') {
         clearTimeout(pollTimer);
         document.getElementById('statusBar').classList.add('hidden');
         document.getElementById('metaCard').classList.remove('hidden');
         document.getElementById('metaStatus').textContent = 'COMPLETED';
         document.getElementById('metaStatus').className = 'font-semibold text-emerald-400';
+        document.getElementById('stages').classList.add('hidden');
 
-        // light up all stages
-        document.querySelectorAll('.stage-pill').forEach(el => {
-          el.classList.remove('bg-slate-800');
-          el.classList.add('bg-emerald-600/30', 'text-emerald-300');
-        });
-
-        // render report markdown
-        const rc = document.getElementById('reportContent');
-        rc.innerHTML = marked.parse(o.report || '*No report content.*');
-        rc.classList.remove('hidden');
+        renderSections(o.report || '');
 
       } else if (o.status === 'FAILED') {
         clearTimeout(pollTimer);
         showError(o.error || 'Unknown error');
 
       } else {
-        // still processing — animate stages based on cost_breakdown
+        // PROCESSING
         document.getElementById('statusBar').classList.remove('hidden');
+        document.getElementById('statusTitle').textContent = 'Generating briefing…';
+        document.getElementById('statusSub').textContent   = 'Your agent is gathering intelligence from APIs. This takes ~30 seconds.';
+        document.getElementById('stages').classList.remove('hidden');
+
         const breakdown = JSON.parse(o.cost_breakdown || '{}');
         const stageMap = {
           'apollo_org': 's-apollo', 'apollo_people': 's-apollo',
           'hunter': 's-hunter', 'builtwith': 's-builtwith',
           'firecrawl': 's-firecrawl', 'tavily': 's-tavily',
-          'openai': 's-openai',
+          'tavily_competitors': 's-tavily', 'openai': 's-openai',
         };
         for (const key of Object.keys(breakdown)) {
           const el = document.getElementById(stageMap[key]);
@@ -167,8 +223,104 @@
       }
     }
 
+    function renderSections(markdown) {
+      const container = document.getElementById('reportSections');
+      container.innerHTML = '';
+
+      // Split only on numbered top-level sections: "## 1. ", "## 2. ", etc.
+      // This prevents any ## inside a section body from creating extra cards.
+      const parts = markdown.split(/^(?=## \d+\.)/m).filter(p => p.trim());
+
+      if (parts.length <= 1) {
+        // Fallback: no clear sections, render as single card
+        container.innerHTML = `
+          <div class="section-card bg-slate-900 border border-slate-700/50 rounded-2xl overflow-hidden">
+            <div class="section-body p-6">${marked.parse(markdown)}</div>
+          </div>`;
+        container.classList.remove('hidden');
+        return;
+      }
+
+      parts.forEach(part => {
+        const lines   = part.trim().split('\n');
+        // Strip leading "## N. " to get a clean heading title
+        const heading = lines[0].replace(/^##\s*\d+\.\s*/, '').trim();
+        const body    = lines.slice(1).join('\n').trim();
+        const key     = heading.toLowerCase();
+
+        const meta    = Object.entries(SECTION_META).find(([k]) => key.includes(k));
+        const icon    = meta ? meta[1].icon  : '📄';
+        const color   = meta ? meta[1].color : 'slate';
+        const [border, bg, text] = COLOR_CLASSES[color];
+
+        const card = document.createElement('div');
+        card.className = `section-card bg-slate-900 border ${border} rounded-2xl overflow-hidden`;
+        card.innerHTML = `
+          <div class="flex items-center justify-between px-5 py-3 ${bg} border-b ${border} cursor-pointer select-none"
+               onclick="toggleSection(this)">
+            <div class="flex items-center gap-2">
+              <span class="text-lg">${icon}</span>
+              <span class="font-semibold ${text}">${heading}</span>
+            </div>
+            <div class="flex items-center gap-2">
+              <button onclick="copySection(event, this)" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-700 transition">Copy</button>
+              <span class="chevron ${text} text-sm transition-transform">▼</span>
+            </div>
+          </div>
+          <div class="section-body section-content px-5 py-4">${marked.parse(body)}</div>`;
+        container.appendChild(card);
+      });
+
+      container.classList.remove('hidden');
+    }
+
+    function toggleSection(header) {
+      const content = header.nextElementSibling;
+      const chevron = header.querySelector('.chevron');
+      const isHidden = content.style.display === 'none';
+      content.style.display = isHidden ? '' : 'none';
+      chevron.style.transform = isHidden ? '' : 'rotate(-90deg)';
+    }
+
+    function copySection(e, btn) {
+      e.stopPropagation();
+      const content = btn.closest('.section-card').querySelector('.section-content');
+      navigator.clipboard.writeText(content.innerText).then(() => {
+        btn.textContent = 'Copied!';
+        setTimeout(() => btn.textContent = 'Copy', 1500);
+      });
+    }
+
+    function copyAll() {
+      if (orderData?.report) {
+        navigator.clipboard.writeText(orderData.report).then(() => {
+          const btn = event.target;
+          btn.textContent = '✓ Copied!';
+          setTimeout(() => btn.textContent = '📋 Copy full report', 1500);
+        });
+      }
+    }
+
+    async function sendEmail() {
+      if (!orderData) return;
+      const btn = document.getElementById('emailBtn');
+      btn.disabled = true;
+      btn.textContent = '⏳ Sending…';
+      try {
+        const res = await fetch(`/api/orders/${orderId}/send-email`, { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed to send');
+        btn.textContent = '✓ Sent!';
+        setTimeout(() => { btn.textContent = '✉ Send to my email'; btn.disabled = false; }, 3000);
+      } catch (ex) {
+        btn.textContent = '✗ ' + ex.message;
+        setTimeout(() => { btn.textContent = '✉ Send to my email'; btn.disabled = false; }, 3000);
+      }
+    }
+
     function showError(msg) {
       document.getElementById('statusBar').classList.add('hidden');
+      document.getElementById('stages').classList.add('hidden');
       document.getElementById('errorBlock').classList.remove('hidden');
       document.getElementById('errorText').textContent = msg;
     }

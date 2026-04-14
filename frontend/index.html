@@ -8,6 +8,9 @@
   <style>
     .loader{width:20px;height:20px;border:3px solid #4f46e5;border-bottom-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
+    .tier-card{cursor:pointer;transition:all .2s}
+    .tier-card.selected{border-color:#6366f1;background:#1e1b4b}
+    .tier-card:not(.selected):hover{border-color:#475569}
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -22,7 +25,7 @@
 
   <!-- Hero -->
   <main class="flex-1 flex items-center justify-center px-4 py-12">
-    <div class="max-w-xl w-full">
+    <div class="max-w-2xl w-full">
 
       <div class="text-center mb-10">
         <h1 class="text-4xl font-extrabold mb-3">
@@ -31,7 +34,7 @@
         </h1>
         <p class="text-slate-400 text-lg">
           Enter a company name. Get a full sales briefing in 30 seconds.<br/>
-          Powered by 6 intelligence sources. <span class="text-emerald-400 font-semibold">$1.50 per report.</span>
+          Powered by 6 intelligence sources.
         </p>
       </div>
 
@@ -62,9 +65,67 @@
             class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
         </div>
 
+        <!-- Tier Selector -->
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-3">Choose Your Plan</label>
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="tierGrid">
+
+            <div class="tier-card border border-slate-700 rounded-xl p-4" data-tier="starter" onclick="selectTier('starter')">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-slate-300">Starter</span>
+                <span class="text-lg font-bold text-emerald-400">$0.75</span>
+              </div>
+              <p class="text-xs text-slate-500 mb-3">Company snapshot + news. Fast &amp; affordable.</p>
+              <ul class="text-xs text-slate-400 space-y-1">
+                <li>✓ Apollo org profile</li>
+                <li>✓ Tavily news (5 results)</li>
+                <li>✓ GPT-4o-mini synthesis</li>
+                <li class="text-slate-600">✗ People / contacts</li>
+                <li class="text-slate-600">✗ Tech stack</li>
+              </ul>
+            </div>
+
+            <div class="tier-card selected border rounded-xl p-4 relative" data-tier="pro" onclick="selectTier('pro')">
+              <div class="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                <span class="bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Most Popular</span>
+              </div>
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-white">Pro</span>
+                <span class="text-lg font-bold text-emerald-400">$1.50</span>
+              </div>
+              <p class="text-xs text-slate-400 mb-3">Full 6-source intel + GPT-4o synthesis.</p>
+              <ul class="text-xs text-slate-300 space-y-1">
+                <li>✓ Apollo org + people</li>
+                <li>✓ Hunter email lookup</li>
+                <li>✓ BuiltWith tech stack</li>
+                <li>✓ Firecrawl website</li>
+                <li>✓ GPT-4o synthesis</li>
+              </ul>
+            </div>
+
+            <div class="tier-card border border-slate-700 rounded-xl p-4" data-tier="elite" onclick="selectTier('elite')">
+              <div class="flex items-center justify-between mb-2">
+                <span class="text-sm font-semibold text-slate-300">Elite</span>
+                <span class="text-lg font-bold text-yellow-400">$3.00</span>
+              </div>
+              <p class="text-xs text-slate-500 mb-3">Deep research for high-stakes calls.</p>
+              <ul class="text-xs text-slate-400 space-y-1">
+                <li>✓ Everything in Pro</li>
+                <li>✓ 10 news results</li>
+                <li>✓ Competitor research</li>
+                <li>✓ GPT-4o (8k tokens)</li>
+                <li>✓ Account intel summary</li>
+              </ul>
+            </div>
+
+          </div>
+        </div>
+
+        <input type="hidden" id="selectedTier" value="pro" />
+
         <button id="submitBtn" type="submit"
           class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg px-4 py-3 transition flex items-center justify-center gap-2">
-          Generate Briefing — $1.50
+          Generate Briefing — $1.50 USDC
         </button>
 
         <p id="errorMsg" class="text-red-400 text-sm text-center hidden"></p>
@@ -74,13 +135,13 @@
       <div class="mt-10 grid grid-cols-3 gap-4 text-center text-sm text-slate-400">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">1</div>
-          <div class="font-medium text-white">Enter company</div>
-          <div>Name or domain</div>
+          <div class="font-medium text-white">Choose a plan</div>
+          <div>Pick your intel depth</div>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">2</div>
           <div class="font-medium text-white">Agent researches</div>
-          <div>6 APIs in parallel</div>
+          <div>APIs run in parallel</div>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">3</div>
@@ -108,15 +169,43 @@
   </footer>
 
   <script>
+    const TIER_PRICES = { starter: '0.75', pro: '1.50', elite: '3.00' };
     const form = document.getElementById('orderForm');
     const btn  = document.getElementById('submitBtn');
     const err  = document.getElementById('errorMsg');
+
+    function selectTier(tier) {
+      document.getElementById('selectedTier').value = tier;
+      document.querySelectorAll('.tier-card').forEach(c => c.classList.remove('selected'));
+      document.querySelector(`[data-tier="${tier}"]`).classList.add('selected');
+      btn.textContent = `Generate Briefing — $${TIER_PRICES[tier]} USDC`;
+    }
+
+    // Fetch live prices from backend and update tier cards
+    (async () => {
+      try {
+        const res  = await fetch('/api/dashboard');
+        const data = await res.json();
+        const tiers = data.tiers || {};
+        Object.entries(tiers).forEach(([key, cfg]) => {
+          TIER_PRICES[key] = parseFloat(cfg.price).toFixed(2);
+          const card = document.querySelector(`[data-tier="${key}"]`);
+          if (card) {
+            card.querySelector('.font-bold').textContent = `$${TIER_PRICES[key]}`;
+          }
+        });
+        // refresh button label
+        selectTier(document.getElementById('selectedTier').value);
+      } catch (_) {}
+    })();
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
       err.classList.add('hidden');
       btn.disabled = true;
-      btn.innerHTML = '<span class="loader"></span> Creating briefing…';
+      btn.innerHTML = '<span class="loader"></span> Setting up payment…';
+
+      const tier = document.getElementById('selectedTier').value;
 
       try {
         const res = await fetch('/api/orders', {
@@ -127,6 +216,7 @@
             company_domain: document.getElementById('companyDomain').value.trim(),
             context:        document.getElementById('context').value.trim(),
             client_email:   document.getElementById('clientEmail').value.trim(),
+            tier,
           }),
         });
 
@@ -136,12 +226,12 @@
           throw new Error(data.detail || data.error || 'Request failed');
         }
 
-        window.location.href = '/report/' + data.order_id;
+        window.location.href = data.checkout_url;
       } catch (ex) {
         err.textContent = ex.message;
         err.classList.remove('hidden');
         btn.disabled = false;
-        btn.innerHTML = 'Generate Briefing — $1.50';
+        btn.textContent = `Generate Briefing — $${TIER_PRICES[tier]} USDC`;
       }
     });
   </script>
