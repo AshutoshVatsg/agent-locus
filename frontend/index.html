@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-950 text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriefBot — AI Sales Briefings</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .loader{width:20px;height:20px;border:3px solid #4f46e5;border-bottom-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite}
+    @keyframes spin{to{transform:rotate(360deg)}}
+  </style>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold tracking-tight">
+      <span class="text-indigo-400">Brief</span>Bot
+    </a>
+    <a href="/dashboard" class="text-sm text-slate-400 hover:text-white transition">Dashboard &rarr;</a>
+  </nav>
+
+  <!-- Hero -->
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-xl w-full">
+
+      <div class="text-center mb-10">
+        <h1 class="text-4xl font-extrabold mb-3">
+          Know your prospect<br/>
+          <span class="text-indigo-400">before the call.</span>
+        </h1>
+        <p class="text-slate-400 text-lg">
+          Enter a company name. Get a full sales briefing in 30 seconds.<br/>
+          Powered by 6 intelligence sources. <span class="text-emerald-400 font-semibold">$1.50 per report.</span>
+        </p>
+      </div>
+
+      <!-- Order Form -->
+      <form id="orderForm" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Company Name *</label>
+          <input id="companyName" type="text" required placeholder="e.g. Stripe"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Domain <span class="text-slate-500">(optional — we'll find it)</span></label>
+          <input id="companyDomain" type="text" placeholder="e.g. stripe.com"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Your Context <span class="text-slate-500">(what are you selling?)</span></label>
+          <textarea id="context" rows="2" placeholder="e.g. I sell a DevOps monitoring tool and have a call with their VP Eng tomorrow"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-slate-300 mb-1">Your Email *</label>
+          <input id="clientEmail" type="email" required placeholder="you@company.com"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+        </div>
+
+        <button id="submitBtn" type="submit"
+          class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg px-4 py-3 transition flex items-center justify-center gap-2">
+          Generate Briefing — $1.50
+        </button>
+
+        <p id="errorMsg" class="text-red-400 text-sm text-center hidden"></p>
+      </form>
+
+      <!-- How it works -->
+      <div class="mt-10 grid grid-cols-3 gap-4 text-center text-sm text-slate-400">
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-2xl mb-2">1</div>
+          <div class="font-medium text-white">Enter company</div>
+          <div>Name or domain</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-2xl mb-2">2</div>
+          <div class="font-medium text-white">Agent researches</div>
+          <div>6 APIs in parallel</div>
+        </div>
+        <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
+          <div class="text-2xl mb-2">3</div>
+          <div class="font-medium text-white">Get briefing</div>
+          <div>Ready in ~30s</div>
+        </div>
+      </div>
+
+      <!-- Data sources -->
+      <div class="mt-6 flex flex-wrap justify-center gap-2">
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">Apollo</span>
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">Hunter</span>
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">BuiltWith</span>
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">Firecrawl</span>
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">Tavily</span>
+        <span class="px-3 py-1 rounded-full bg-slate-800 text-xs text-slate-400">OpenAI GPT-4o</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-500">
+    Payments powered by <a href="https://beta.paywithlocus.com" target="_blank" class="text-indigo-400 hover:underline">Locus</a>
+    &middot; Built for the Locus Paygentic Hackathon
+  </footer>
+
+  <script>
+    const form = document.getElementById('orderForm');
+    const btn  = document.getElementById('submitBtn');
+    const err  = document.getElementById('errorMsg');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      err.classList.add('hidden');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader"></span> Creating briefing…';
+
+      try {
+        const res = await fetch('/api/orders', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({
+            company_name:   document.getElementById('companyName').value.trim(),
+            company_domain: document.getElementById('companyDomain').value.trim(),
+            context:        document.getElementById('context').value.trim(),
+            client_email:   document.getElementById('clientEmail').value.trim(),
+          }),
+        });
+
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.detail || data.error || 'Request failed');
+        }
+
+        window.location.href = '/report/' + data.order_id;
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('hidden');
+        btn.disabled = false;
+        btn.innerHTML = 'Generate Briefing — $1.50';
+      }
+    });
+  </script>
+</body>
+</html>

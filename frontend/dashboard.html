@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-950 text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriefBot — Dashboard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold tracking-tight">
+      <span class="text-indigo-400">Brief</span>Bot
+      <span class="text-xs text-slate-500 ml-2">DASHBOARD</span>
+    </a>
+    <a href="/" class="text-sm text-slate-400 hover:text-white transition">&larr; Storefront</a>
+  </nav>
+
+  <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+
+    <!-- Stats cards -->
+    <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">Orders</div>
+        <div id="statOrders" class="text-2xl font-bold mt-1">—</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">Completed</div>
+        <div id="statCompleted" class="text-2xl font-bold mt-1 text-emerald-400">—</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">Revenue</div>
+        <div id="statRevenue" class="text-2xl font-bold mt-1 text-emerald-400">—</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">API Costs</div>
+        <div id="statCosts" class="text-2xl font-bold mt-1 text-red-400">—</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">Net Profit</div>
+        <div id="statProfit" class="text-2xl font-bold mt-1 text-indigo-400">—</div>
+      </div>
+
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
+        <div class="text-xs text-slate-500 uppercase tracking-wider">Wallet</div>
+        <div id="statWallet" class="text-2xl font-bold mt-1">—</div>
+      </div>
+    </div>
+
+    <!-- Profit margin bar -->
+    <div class="mb-8 bg-slate-900 border border-slate-800 rounded-xl p-4">
+      <div class="flex items-center justify-between mb-2">
+        <span class="text-sm font-medium text-slate-400">Profit Margin</span>
+        <span id="marginPct" class="text-sm font-bold text-indigo-400">—</span>
+      </div>
+      <div class="w-full bg-slate-800 rounded-full h-3">
+        <div id="marginBar" class="bg-indigo-500 h-3 rounded-full transition-all duration-500" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Orders table -->
+    <div class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden">
+      <div class="px-5 py-3 border-b border-slate-800 flex items-center justify-between">
+        <span class="font-semibold">Recent Orders</span>
+        <span id="liveIndicator" class="text-xs text-emerald-400 flex items-center gap-1">
+          <span class="inline-block w-2 h-2 bg-emerald-400 rounded-full animate-pulse"></span>
+          Live
+        </span>
+      </div>
+      <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+          <thead>
+            <tr class="text-left text-slate-500 text-xs uppercase tracking-wider">
+              <th class="px-5 py-3">Order</th>
+              <th class="px-5 py-3">Company</th>
+              <th class="px-5 py-3">Status</th>
+              <th class="px-5 py-3">Revenue</th>
+              <th class="px-5 py-3">Cost</th>
+              <th class="px-5 py-3">Profit</th>
+              <th class="px-5 py-3">Time</th>
+              <th class="px-5 py-3"></th>
+            </tr>
+          </thead>
+          <tbody id="ordersBody">
+            <tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">Loading…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Cost breakdown (per-provider) -->
+    <div id="breakdownSection" class="hidden mt-8 bg-slate-900 border border-slate-800 rounded-xl p-5">
+      <div class="font-semibold mb-3">Aggregate Cost Breakdown (all orders)</div>
+      <div id="breakdownBars" class="space-y-2"></div>
+    </div>
+
+  </main>
+
+  <footer class="border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-500">
+    Payments powered by <a href="https://beta.paywithlocus.com" target="_blank" class="text-indigo-400 hover:underline">Locus</a>
+    &middot; Built for the Locus Paygentic Hackathon
+  </footer>
+
+  <script>
+    async function load() {
+      const [statsRes, ordersRes] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/orders'),
+      ]);
+      const stats  = await statsRes.json();
+      const orders = await ordersRes.json();
+
+      // Stats cards
+      const rev    = stats.total_revenue || 0;
+      const cost   = stats.total_cost    || 0;
+      const profit = rev - cost;
+      const margin = rev > 0 ? ((profit / rev) * 100) : 0;
+
+      document.getElementById('statOrders').textContent    = stats.total_orders || 0;
+      document.getElementById('statCompleted').textContent = stats.completed || 0;
+      document.getElementById('statRevenue').textContent   = '$' + rev.toFixed(2);
+      document.getElementById('statCosts').textContent     = '$' + cost.toFixed(4);
+      document.getElementById('statProfit').textContent    = '$' + profit.toFixed(2);
+      document.getElementById('statWallet').textContent    = '$' + parseFloat(stats.wallet_balance || 0).toFixed(2);
+
+      document.getElementById('marginPct').textContent = margin.toFixed(1) + '%';
+      document.getElementById('marginBar').style.width = Math.min(margin, 100) + '%';
+
+      // Orders table
+      const tbody = document.getElementById('ordersBody');
+      if (orders.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">No orders yet. <a href="/" class="text-indigo-400 hover:underline">Create one.</a></td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = orders.map(o => {
+        const oRev    = o.revenue || 0;
+        const oCost   = o.total_cost || 0;
+        const oProfit = oRev - oCost;
+        const statusColor = {
+          'COMPLETED': 'text-emerald-400',
+          'PROCESSING': 'text-yellow-400',
+          'FAILED': 'text-red-400',
+        }[o.status] || 'text-slate-400';
+
+        const time = o.created_at ? new Date(o.created_at).toLocaleString() : '—';
+
+        return `<tr class="border-t border-slate-800/50 hover:bg-slate-800/30">
+          <td class="px-5 py-3 font-mono text-xs text-slate-400">${o.id}</td>
+          <td class="px-5 py-3 font-medium">${o.company_name}</td>
+          <td class="px-5 py-3 ${statusColor} font-semibold text-xs">${o.status}</td>
+          <td class="px-5 py-3 text-emerald-400">$${oRev.toFixed(2)}</td>
+          <td class="px-5 py-3 text-red-400">$${oCost.toFixed(4)}</td>
+          <td class="px-5 py-3 font-semibold ${oProfit >= 0 ? 'text-indigo-400' : 'text-red-400'}">$${oProfit.toFixed(2)}</td>
+          <td class="px-5 py-3 text-xs text-slate-500">${time}</td>
+          <td class="px-5 py-3"><a href="/report/${o.id}" class="text-indigo-400 hover:underline text-xs">View</a></td>
+        </tr>`;
+      }).join('');
+
+      // Aggregate cost breakdown
+      const agg = {};
+      orders.forEach(o => {
+        try {
+          const bd = JSON.parse(o.cost_breakdown || '{}');
+          for (const [k, v] of Object.entries(bd)) {
+            agg[k] = (agg[k] || 0) + v;
+          }
+        } catch {}
+      });
+
+      if (Object.keys(agg).length > 0) {
+        const section = document.getElementById('breakdownSection');
+        section.classList.remove('hidden');
+        const maxVal = Math.max(...Object.values(agg));
+        const container = document.getElementById('breakdownBars');
+        container.innerHTML = Object.entries(agg)
+          .sort((a, b) => b[1] - a[1])
+          .map(([k, v]) => {
+            const pct = (v / maxVal * 100).toFixed(0);
+            const labels = {
+              'apollo_org': 'Apollo (Org)', 'apollo_people': 'Apollo (People)',
+              'apollo_org_resolve': 'Apollo (Resolve)', 'hunter': 'Hunter',
+              'builtwith': 'BuiltWith', 'firecrawl': 'Firecrawl',
+              'tavily': 'Tavily', 'openai': 'OpenAI',
+            };
+            return `<div class="flex items-center gap-3">
+              <div class="w-32 text-xs text-slate-400 text-right">${labels[k] || k}</div>
+              <div class="flex-1 bg-slate-800 rounded-full h-2">
+                <div class="bg-indigo-500 h-2 rounded-full" style="width:${pct}%"></div>
+              </div>
+              <div class="w-16 text-xs text-slate-400">$${v.toFixed(4)}</div>
+            </div>`;
+          }).join('');
+      }
+    }
+
+    load();
+    setInterval(load, 8000); // auto-refresh
+  </script>
+</body>
+</html>
