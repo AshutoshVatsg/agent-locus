@@ -5,7 +5,7 @@
       "port": 8080,
       "healthCheck": "/health",
       "env": {
-        "SERVER_URL": "${{briefbot.URL}}",
+        "SERVER_URL": "https://svc-mo07tm15otyzhfy0.buildwithlocus.com",
         "LOCUS_API_KEY": "",
         "ADMIN_KEY": "",
         "AGENTMAIL_INBOX_ID": ""
