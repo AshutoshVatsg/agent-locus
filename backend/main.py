@@ -50,6 +50,11 @@ def on_startup():
     init_db()
 
 
+@app.get("/health")
+async def health():
+    return {"status": "ok"}
+
+
 # ────────────────────────── Models ──────────────────────────
 
 

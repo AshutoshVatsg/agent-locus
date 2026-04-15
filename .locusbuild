@@ -1,0 +1,15 @@
+{
+  "services": {
+    "briefbot": {
+      "path": ".",
+      "port": 8080,
+      "healthCheck": "/health",
+      "env": {
+        "SERVER_URL": "${{briefbot.URL}}",
+        "LOCUS_API_KEY": "",
+        "ADMIN_KEY": "",
+        "AGENTMAIL_INBOX_ID": ""
+      }
+    }
+  }
+}
