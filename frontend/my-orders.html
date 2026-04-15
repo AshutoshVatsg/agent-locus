@@ -114,15 +114,23 @@
           FAILED: 'bg-red-500/10 text-red-400 border-red-500/20',
         };
 
+        // Trigger payment check for any AWAITING_PAYMENT orders (fires in background)
+        const pending = orders.filter(o => o.status === 'AWAITING_PAYMENT');
+        if (pending.length > 0) {
+          Promise.all(pending.map(o => fetch(`/api/orders/${o.id}`))).then(() => {
+            // Re-fetch to pick up any status changes
+            if (pending.length > 0) setTimeout(() => fetchOrders(email), 2000);
+          });
+        }
+
         list.innerHTML = orders.map(o => {
           const tier   = tierLabels[o.tier] || o.tier || 'Base';
           const status = o.status || 'UNKNOWN';
           const color  = statusColors[status] || statusColors.AWAITING_PAYMENT;
           const date   = o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
-          const canView = status === 'COMPLETED' || status === 'PROCESSING';
 
-          return `<a href="${canView ? '/report/' + o.id : '#'}"
-            class="block bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition ${canView ? '' : 'pointer-events-none opacity-60'}">
+          return `<a href="/report/${o.id}"
+            class="block bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition">
             <div class="flex items-center justify-between mb-2">
               <div class="font-semibold">${o.company_name}</div>
               <span class="text-xs px-2 py-0.5 rounded-full border ${color}">${status.replace('_', ' ')}</span>
