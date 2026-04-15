@@ -111,9 +111,15 @@ async def run_addon(order_id: str, addon_key: str):
 
         results = await asyncio.gather(*tasks.values())
         api_results = dict(zip(tasks.keys(), results))
+        existing_people = _load_json(order.get("people_data"), {})
+        if not any(_call_succeeded(result) for result in api_results.values()):
+            raise RuntimeError(f"All Locus add-on API calls failed for '{addon_key}'")
 
         # map API results to data keys + track costs
         for api, result in api_results.items():
+            if not _call_succeeded(result):
+                continue
+
             cost_key = _api_cost_key(api)
             costs[f"addon_{addon_key}_{cost_key}"] = COSTS.get(cost_key, 0.01)
 
@@ -125,9 +131,6 @@ async def run_addon(order_id: str, addon_key: str):
                 update_order(order_id, hiring_data=json.dumps(result, default=str))
             elif api == "apollo_people":
                 new_data["people_data"] = result
-                update_order(order_id, people_data=json.dumps(
-                    {"apollo": result, "hunter": json.loads(order.get("people_data") or "{}").get("hunter", {})},
-                    default=str))
             elif api == "hunter":
                 new_data["hunter_data"] = result
             elif api == "firecrawl_blog":
@@ -136,6 +139,14 @@ async def run_addon(order_id: str, addon_key: str):
             elif api == "tavily_competitors":
                 new_data["competitor_data"] = result
                 update_order(order_id, competitor_data=json.dumps(result, default=str))
+
+        merged_people = _merge_people_data(
+            existing_people,
+            apollo=new_data.get("people_data"),
+            hunter=new_data.get("hunter_data"),
+        )
+        if merged_people != existing_people:
+            update_order(order_id, people_data=json.dumps(merged_people, default=str))
 
         # synthesise just this section
         prompt = build_addon_prompt(addon_key, company, context, order, new_data)
@@ -206,19 +217,23 @@ async def run_upgrade(order_id: str, target_tier: str):
 
             results = await asyncio.gather(*tasks.values())
             api_results = dict(zip(tasks.keys(), results))
+            existing_people = _load_json(order.get("people_data"), {})
+            apollo_result = None
+            hunter_result = None
+            if not any(_call_succeeded(result) for result in api_results.values()):
+                raise RuntimeError(f"All Locus upgrade API calls failed for tier '{target_tier}'")
 
             for api, result in api_results.items():
+                if not _call_succeeded(result):
+                    continue
+
                 cost_key = _api_cost_key(api)
                 costs[f"upgrade_{cost_key}"] = COSTS.get(cost_key, 0.01)
 
                 if api == "apollo_people":
-                    update_order(order_id, people_data=json.dumps(
-                        {"apollo": result, "hunter": {}}, default=str))
+                    apollo_result = result
                 elif api == "hunter":
-                    # merge with existing people data
-                    existing = json.loads(order.get("people_data") or "{}")
-                    existing["hunter"] = result
-                    update_order(order_id, people_data=json.dumps(existing, default=str))
+                    hunter_result = result
                 elif api == "firecrawl_careers":
                     update_order(order_id, careers_data=json.dumps(result, default=str))
                 elif api == "firecrawl_blog":
@@ -227,6 +242,14 @@ async def run_upgrade(order_id: str, target_tier: str):
                     update_order(order_id, hiring_data=json.dumps(result, default=str))
                 elif api == "tavily_competitors":
                     update_order(order_id, competitor_data=json.dumps(result, default=str))
+
+            merged_people = _merge_people_data(
+                existing_people,
+                apollo=apollo_result,
+                hunter=hunter_result,
+            )
+            if merged_people != existing_people:
+                update_order(order_id, people_data=json.dumps(merged_people, default=str))
 
         # re-read order with all updated data
         order = get_order(order_id)
@@ -288,7 +311,8 @@ async def _gather_all(locus, apis, company, domain, url, cfg, costs):
         _safe(locus.firecrawl_scrape(f"{url}/blog"))         if run("firecrawl_blog") and has_url   else _noop(),
         _safe(locus.tavily_search(
             f"{company} latest news funding product launch",
-            max_results=cfg["tavily_results"])),
+            max_results=cfg["tavily_results"],
+            topic="news")),
         _safe(locus.tavily_search(
             f"{company} hiring engineers job openings team growth",
             max_results=5))                                   if run("tavily_hiring")       else _noop(),
@@ -301,17 +325,46 @@ async def _gather_all(locus, apis, company, domain, url, cfg, costs):
      website_data, careers_data, blog_data,
      news_data, hiring_data, competitor_data) = results
 
+    selected_results = [company_data, news_data]
+    if run("apollo_people") and has_domain:
+        selected_results.append(people_data)
+    if run("hunter") and has_domain:
+        selected_results.append(hunter_data)
+    if run("builtwith") and has_domain:
+        selected_results.append(tech_data)
+    if run("firecrawl_home") and has_url:
+        selected_results.append(website_data)
+    if run("firecrawl_careers") and has_url:
+        selected_results.append(careers_data)
+    if run("firecrawl_blog") and has_url:
+        selected_results.append(blog_data)
+    if run("tavily_hiring"):
+        selected_results.append(hiring_data)
+    if run("tavily_competitors"):
+        selected_results.append(competitor_data)
+
+    if not any(_call_succeeded(result) for result in selected_results):
+        raise RuntimeError("All Locus data-gathering calls failed")
+
     # track costs
-    costs["apollo_org"] = COSTS["apollo_org"]
-    if run("apollo_people") and has_domain: costs["apollo_people"]      = COSTS["apollo_people"]
-    if run("hunter") and has_domain:        costs["hunter"]             = COSTS["hunter"]
-    if run("builtwith") and has_domain:     costs["builtwith"]          = COSTS["builtwith"]
-    if run("firecrawl_home") and has_url:   costs["firecrawl_home"]     = COSTS["firecrawl"]
-    if run("firecrawl_careers") and has_url: costs["firecrawl_careers"] = COSTS["firecrawl"]
-    if run("firecrawl_blog") and has_url:   costs["firecrawl_blog"]    = COSTS["firecrawl"]
-    costs["tavily_news"] = COSTS["tavily"]
-    if run("tavily_hiring"):      costs["tavily_hiring"]      = COSTS["tavily"]
-    if run("tavily_competitors"): costs["tavily_competitors"] = COSTS["tavily"]
+    if _call_succeeded(company_data):                          costs["apollo_org"] = COSTS["apollo_org"]
+    if run("apollo_people") and has_domain and _call_succeeded(people_data):
+        costs["apollo_people"] = COSTS["apollo_people"]
+    if run("hunter") and has_domain and _call_succeeded(hunter_data):
+        costs["hunter"] = COSTS["hunter"]
+    if run("builtwith") and has_domain and _call_succeeded(tech_data):
+        costs["builtwith"] = COSTS["builtwith"]
+    if run("firecrawl_home") and has_url and _call_succeeded(website_data):
+        costs["firecrawl_home"] = COSTS["firecrawl"]
+    if run("firecrawl_careers") and has_url and _call_succeeded(careers_data):
+        costs["firecrawl_careers"] = COSTS["firecrawl"]
+    if run("firecrawl_blog") and has_url and _call_succeeded(blog_data):
+        costs["firecrawl_blog"] = COSTS["firecrawl"]
+    if _call_succeeded(news_data): costs["tavily_news"] = COSTS["tavily"]
+    if run("tavily_hiring") and _call_succeeded(hiring_data):
+        costs["tavily_hiring"] = COSTS["tavily"]
+    if run("tavily_competitors") and _call_succeeded(competitor_data):
+        costs["tavily_competitors"] = COSTS["tavily"]
 
     return {
         "company":        company_data,
@@ -418,3 +471,29 @@ def _extract_report(resp):
     return ("## Report Generation Failed\n\n"
             "The synthesis stage did not return a report. "
             "Raw intelligence data is still available.")
+
+
+def _call_succeeded(result) -> bool:
+    if not isinstance(result, dict):
+        return False
+    if result.get("success") is False:
+        return False
+    return "error" not in result
+
+
+def _load_json(raw, default):
+    if not raw:
+        return default
+    try:
+        return json.loads(raw)
+    except Exception:
+        return default
+
+
+def _merge_people_data(existing, *, apollo=None, hunter=None):
+    merged = dict(existing or {})
+    if apollo is not None:
+        merged["apollo"] = apollo
+    if hunter is not None:
+        merged["hunter"] = hunter
+    return merged

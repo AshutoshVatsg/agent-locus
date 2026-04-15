@@ -16,14 +16,21 @@
     const oid = window.location.pathname.split('/').pop();
     const reportUrl = '/report/' + oid;
 
-    // If we're in a popup, close it — parent is polling and will redirect
-    if (window.opener) {
-      window.opener.location.href = reportUrl;
-      window.close();
-    } else {
-      // Full-page mode — just redirect
-      window.location.href = reportUrl;
+    async function confirmAndRedirect() {
+      try {
+        await fetch(`/api/orders/${oid}/confirm-payment`, { method: 'POST' });
+      } catch (_) {}
+
+      // If we're in a popup, close it — parent is polling and will redirect
+      if (window.opener) {
+        window.opener.location.href = reportUrl;
+        window.close();
+      } else {
+        window.location.href = reportUrl;
+      }
     }
+
+    confirmAndRedirect();
   </script>
 </body>
 </html>

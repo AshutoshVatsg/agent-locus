@@ -45,6 +45,54 @@ def _require_admin(request: Request):
         raise HTTPException(403, "Unauthorized")
 
 
+async def _refresh_order_state(oid: str, bg: BackgroundTasks):
+    order = get_order(oid)
+    if not order:
+        raise HTTPException(404, "Order not found")
+
+    locus = LocusClient()
+
+    # check initial payment and start the first pipeline run
+    if order["status"] == "AWAITING_PAYMENT" and order.get("checkout_session_id"):
+        try:
+            session = await locus.get_checkout_session(order["checkout_session_id"])
+            if session.get("success") and session["data"]["status"] == "PAID":
+                now = datetime.now(timezone.utc).isoformat()
+                update_order(oid, status="PROCESSING", paid_at=now)
+                order = get_order(oid) or order
+                bg.add_task(
+                    run_pipeline, oid, order["company_name"],
+                    order["company_domain"], order["context"],
+                    order.get("tier", "base"),
+                )
+        except Exception as e:
+            log.warning("Payment check failed for %s: %s", oid, e)
+
+    # check pending add-on / upgrade payment
+    pending_raw = (order.get("pending_action") or "").strip()
+    if pending_raw and order["status"] == "COMPLETED":
+        try:
+            pending = json.loads(pending_raw)
+            csid = pending.get("checkout_session_id")
+            if csid:
+                session = await locus.get_checkout_session(csid)
+                if session.get("success"):
+                    sess_status = session["data"]["status"]
+                    if sess_status == "PAID":
+                        update_order(oid, status="PROCESSING", pending_action=pending_raw)
+                        order = get_order(oid) or order
+                        if pending["type"] == "addon":
+                            bg.add_task(run_addon, oid, pending["key"])
+                        elif pending["type"] == "upgrade":
+                            bg.add_task(run_upgrade, oid, pending["tier"])
+                    elif sess_status in ("EXPIRED", "CANCELLED"):
+                        update_order(oid, pending_action="")
+        except Exception as e:
+            log.warning("Pending action check failed for %s: %s", oid, e)
+
+    return get_order(oid) or order
+
+
 @app.on_event("startup")
 def on_startup():
     init_db()
@@ -112,57 +160,13 @@ async def api_create_order(body: OrderIn):
 
 @app.get("/api/orders/{oid}")
 async def api_get_order(oid: str, bg: BackgroundTasks):
-    order = get_order(oid)
-    if not order:
-        raise HTTPException(404, "Order not found")
+    return await _refresh_order_state(oid, bg)
 
-    locus = LocusClient()
 
-    # ── check initial payment ──
-    if order["status"] == "AWAITING_PAYMENT" and order.get("checkout_session_id"):
-        try:
-            session = await locus.get_checkout_session(order["checkout_session_id"])
-            if session.get("success") and session["data"]["status"] == "PAID":
-                now = datetime.now(timezone.utc).isoformat()
-                update_order(oid, status="PROCESSING", paid_at=now)
-                order["status"] = "PROCESSING"
-                order["paid_at"] = now
-                bg.add_task(
-                    run_pipeline, oid, order["company_name"],
-                    order["company_domain"], order["context"],
-                    order.get("tier", "base"),
-                )
-        except Exception as e:
-            log.warning("Payment check failed for %s: %s", oid, e)
-
-    # ── check pending add-on / upgrade payment ──
-    pending_raw = order.get("pending_action") or ""
-    if pending_raw and order["status"] == "COMPLETED":
-        try:
-            pending = json.loads(pending_raw)
-            csid = pending.get("checkout_session_id")
-            if csid:
-                session = await locus.get_checkout_session(csid)
-                if session.get("success"):
-                    sess_status = session["data"]["status"]
-                    if sess_status == "PAID":
-                        if pending["type"] == "addon":
-                            update_order(oid, status="PROCESSING", pending_action=pending_raw)
-                            order["status"] = "PROCESSING"
-                            bg.add_task(run_addon, oid, pending["key"])
-                        elif pending["type"] == "upgrade":
-                            update_order(oid, status="PROCESSING", pending_action=pending_raw)
-                            order["status"] = "PROCESSING"
-                            bg.add_task(run_upgrade, oid, pending["tier"])
-                    elif sess_status in ("EXPIRED", "CANCELLED"):
-                        # Checkout abandoned or expired — clear so user can retry
-                        update_order(oid, pending_action="")
-                        order["pending_action"] = ""
-                    # else PENDING — still waiting, leave pending_action intact
-        except Exception as e:
-            log.warning("Pending action check failed for %s: %s", oid, e)
-
-    return order
+@app.post("/api/orders/{oid}/confirm-payment")
+async def api_confirm_payment(oid: str, bg: BackgroundTasks):
+    """Actively confirm checkout completion and kick off any pending pipeline work."""
+    return await _refresh_order_state(oid, bg)
 
 
 # ────────────────────────── Pending Action ──────────────────────────
