@@ -38,7 +38,10 @@
       "Bash(kill 32366 32365)",
       "Bash(SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\" /home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app:*)",
       "Bash(/home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/python3:*)",
-      "Bash(SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\" ADMIN_KEY=\"briefbot-owner-2026\" /home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app:*)"
+      "Bash(SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\" ADMIN_KEY=\"briefbot-owner-2026\" /home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app:*)",
+      "WebFetch(domain:buildwithlocus.com)",
+      "Bash(export LOCUS_BUILD_TOKEN=\"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIweDVhZmYzMzgwZjhiODMxNTI0MmRkYzdmOTE1ODFjMDdiOGVhYjk0MzkiLCJ3b3Jrc3BhY2VJZCI6IndzX2ExNDVlODY4IiwiZW1haWwiOiJhc2h1dG9zaHZhdHNnQGdtYWlsLmNvbSIsImlhdCI6MTc3NjI2NzM4MywiZXhwIjoxNzc4ODU5MzgzfQ.DwiHueJJ5d2I5g_ahdn0q-tb3trrDK6Dcyj0ZA_XWq8\")",
+      "Bash(echo eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VySWQiOiIweDVhZmYzMzgwZjhiODMxNTI0MmRkYzdmOTE1ODFjMDdiOGVhYjk0MzkiLCJ3b3Jrc3BhY2VJZCI6IndzX2ExNDVlODY4IiwiZW1haWwiOiJhc2h1dG9zaHZhdHNnQGdtYWlsLmNvbSIsImlhdCI6MTc3NjI2NzM4MywiZXhwIjoxNzc4ODU5MzgzfQ.DwiHueJJ5d2I5g_ahdn0q-tb3trrDK6Dcyj0ZA_XWq8)"
     ]
   }
 }
