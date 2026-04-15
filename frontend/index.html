@@ -242,7 +242,27 @@
           throw new Error(data.detail || data.error || 'Request failed');
         }
 
-        window.location.href = data.checkout_url;
+        // Open checkout in a compact popup instead of full redirect
+        const w = 480, h = 640;
+        const left = (screen.width - w) / 2;
+        const top  = (screen.height - h) / 2;
+        const popup = window.open(
+          data.checkout_url,
+          'locus_checkout',
+          `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+        );
+
+        // Poll for popup close → redirect to report
+        const oid = data.order_id;
+        const poll = setInterval(() => {
+          if (popup && popup.closed) {
+            clearInterval(poll);
+            window.location.href = `/report/${oid}`;
+          }
+        }, 500);
+
+        btn.disabled = false;
+        btn.textContent = `Generate Briefing — $${TIER_PRICES[tier]} USDC`;
       } catch (ex) {
         err.textContent = ex.message;
         err.classList.remove('hidden');

@@ -152,6 +152,23 @@
     let pollTimer = null;
     let orderData = null;
 
+    function openCheckoutPopup(url) {
+      const w = 480, h = 640;
+      const left = (screen.width - w) / 2;
+      const top  = (screen.height - h) / 2;
+      const popup = window.open(
+        url, 'locus_checkout',
+        `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
+      );
+      // When popup closes, refresh order state
+      const check = setInterval(() => {
+        if (popup && popup.closed) {
+          clearInterval(check);
+          loadOrder();
+        }
+      }, 500);
+    }
+
     // Section icon/colour mapping
     const SECTION_META = {
       'company snapshot':            { icon: '&#x1F3E2;', color: 'indigo' },
@@ -451,7 +468,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed');
-        window.location.href = data.checkout_url;
+        openCheckoutPopup(data.checkout_url);
+        btn.disabled = false;
+        btn.innerHTML = '<span style="font-size:1.1em">+</span> Add';
       } catch (ex) {
         btn.disabled = false;
         btn.textContent = 'Error: ' + ex.message;
@@ -476,7 +495,9 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed');
-        window.location.href = data.checkout_url;
+        openCheckoutPopup(data.checkout_url);
+        btn.disabled = false;
+        btn.textContent = 'Upgrade';
       } catch (ex) {
         btn.disabled = false;
         btn.textContent = 'Error: ' + ex.message;
