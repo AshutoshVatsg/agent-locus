@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-950 text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Payment Complete — Redirecting…</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex items-center justify-center">
+  <div class="text-center">
+    <div class="text-emerald-400 text-5xl mb-4">&#10003;</div>
+    <h1 class="text-xl font-bold mb-2">Payment Complete!</h1>
+    <p class="text-slate-400 text-sm">Redirecting to your report…</p>
+  </div>
+  <script>
+    const oid = window.location.pathname.split('/').pop();
+    const reportUrl = '/report/' + oid;
+
+    // If we're in a popup, close it — parent is polling and will redirect
+    if (window.opener) {
+      window.opener.location.href = reportUrl;
+      window.close();
+    } else {
+      // Full-page mode — just redirect
+      window.location.href = reportUrl;
+    }
+  </script>
+</body>
+</html>

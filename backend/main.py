@@ -95,7 +95,7 @@ async def api_create_order(body: OrderIn):
     session = await locus.create_checkout_session(
         amount=str(price),
         description=f"BriefBot {tier_label} Briefing — {body.company_name}",
-        success_url=f"{SERVER_URL}/report/{oid}",
+        success_url=f"{SERVER_URL}/checkout-done/{oid}",
         cancel_url=f"{SERVER_URL}/",
         order_id=oid,
     )
@@ -224,7 +224,7 @@ async def api_purchase_addon(oid: str, body: AddonIn):
     session = await locus.create_checkout_session(
         amount=str(addon["price"]),
         description=f"BriefBot Add-on: {addon['label']} — {order['company_name']}",
-        success_url=f"{SERVER_URL}/report/{oid}",
+        success_url=f"{SERVER_URL}/checkout-done/{oid}",
         cancel_url=f"{SERVER_URL}/report/{oid}",
         order_id=f"{oid}_addon_{addon_key}",
     )
@@ -276,7 +276,7 @@ async def api_purchase_upgrade(oid: str, body: UpgradeIn):
     session = await locus.create_checkout_session(
         amount=str(price),
         description=f"BriefBot Upgrade to {target_label} — {order['company_name']}",
-        success_url=f"{SERVER_URL}/report/{oid}",
+        success_url=f"{SERVER_URL}/checkout-done/{oid}",
         cancel_url=f"{SERVER_URL}/report/{oid}",
         order_id=f"{oid}_upgrade_{target_tier}",
     )
@@ -407,6 +407,11 @@ async def page_index():
 @app.get("/report/{oid}")
 async def page_report(oid: str):
     return FileResponse(FRONTEND / "report.html")
+
+
+@app.get("/checkout-done/{oid}")
+async def page_checkout_done(oid: str):
+    return FileResponse(FRONTEND / "checkout-done.html")
 
 
 @app.get("/my-orders")
