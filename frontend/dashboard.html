@@ -3,50 +3,60 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>BriefBot — Dashboard</title>
+  <title>BriefBot — Owner Dashboard</title>
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen flex flex-col">
 
   <!-- Nav -->
   <nav class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
-    <a href="/" class="text-xl font-bold tracking-tight">
+    <div class="text-xl font-bold tracking-tight">
       <span class="text-indigo-400">Brief</span>Bot
-      <span class="text-xs text-slate-500 ml-2">DASHBOARD</span>
-    </a>
-    <a href="/" class="text-sm text-slate-400 hover:text-white transition">&larr; Storefront</a>
+      <span class="text-xs text-slate-500 ml-2">OWNER DASHBOARD</span>
+    </div>
+    <button onclick="logout()" class="text-xs text-slate-500 hover:text-red-400 transition">Logout</button>
   </nav>
 
-  <main class="flex-1 max-w-6xl mx-auto w-full px-4 py-8">
+  <!-- Auth Gate -->
+  <div id="authGate" class="flex-1 flex items-center justify-center px-4">
+    <div class="bg-slate-900 border border-slate-800 rounded-2xl p-8 max-w-sm w-full text-center">
+      <div class="text-lg font-semibold mb-1">Owner Access</div>
+      <p class="text-sm text-slate-400 mb-5">Enter your admin key to view the dashboard.</p>
+      <input id="adminKeyInput" type="password" placeholder="Admin key"
+        class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 mb-3" />
+      <button onclick="authenticate()"
+        class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg px-4 py-2.5 transition">
+        Enter
+      </button>
+      <p id="authError" class="text-red-400 text-sm mt-3 hidden">Invalid key</p>
+    </div>
+  </div>
+
+  <!-- Dashboard (hidden until authed) -->
+  <main id="dashboardMain" class="hidden flex-1 max-w-6xl mx-auto w-full px-4 py-8">
 
     <!-- Stats cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">Orders</div>
         <div id="statOrders" class="text-2xl font-bold mt-1">—</div>
       </div>
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">Completed</div>
         <div id="statCompleted" class="text-2xl font-bold mt-1 text-emerald-400">—</div>
       </div>
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">Revenue</div>
         <div id="statRevenue" class="text-2xl font-bold mt-1 text-emerald-400">—</div>
       </div>
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">API Costs</div>
         <div id="statCosts" class="text-2xl font-bold mt-1 text-red-400">—</div>
       </div>
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">Net Profit</div>
         <div id="statProfit" class="text-2xl font-bold mt-1 text-indigo-400">—</div>
       </div>
-
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
         <div class="text-xs text-slate-500 uppercase tracking-wider">Wallet</div>
         <div id="statWallet" class="text-2xl font-bold mt-1">—</div>
@@ -79,22 +89,23 @@
             <tr class="text-left text-slate-500 text-xs uppercase tracking-wider">
               <th class="px-5 py-3">Order</th>
               <th class="px-5 py-3">Company</th>
+              <th class="px-5 py-3">Tier</th>
+              <th class="px-5 py-3">Add-ons</th>
               <th class="px-5 py-3">Status</th>
               <th class="px-5 py-3">Revenue</th>
               <th class="px-5 py-3">Cost</th>
               <th class="px-5 py-3">Profit</th>
               <th class="px-5 py-3">Time</th>
-              <th class="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody id="ordersBody">
-            <tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">Loading…</td></tr>
+            <tr><td colspan="9" class="px-5 py-8 text-center text-slate-500">Loading…</td></tr>
           </tbody>
         </table>
       </div>
     </div>
 
-    <!-- Cost breakdown (per-provider) -->
+    <!-- Cost breakdown -->
     <div id="breakdownSection" class="hidden mt-8 bg-slate-900 border border-slate-800 rounded-xl p-5">
       <div class="font-semibold mb-3">Aggregate Cost Breakdown (all orders)</div>
       <div id="breakdownBars" class="space-y-2"></div>
@@ -103,20 +114,69 @@
   </main>
 
   <footer class="border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-500">
-    Payments powered by <a href="https://beta.paywithlocus.com" target="_blank" class="text-indigo-400 hover:underline">Locus</a>
-    &middot; Built for the Locus Paygentic Hackathon
+    Owner dashboard &middot; Not visible to clients
   </footer>
 
   <script>
+    const ADMIN_KEY_STORAGE = 'briefbot_admin_key';
+    let adminKey = localStorage.getItem(ADMIN_KEY_STORAGE) || '';
+
+    // Auto-login if key is saved
+    if (adminKey) authenticate(true);
+
+    // Enter key support
+    document.getElementById('adminKeyInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') authenticate();
+    });
+
+    async function authenticate(silent) {
+      if (!silent) {
+        adminKey = document.getElementById('adminKeyInput').value.trim();
+      }
+      try {
+        const res = await fetch('/api/dashboard', {
+          headers: { 'X-Admin-Key': adminKey }
+        });
+        if (res.status === 403) {
+          if (!silent) {
+            document.getElementById('authError').classList.remove('hidden');
+          } else {
+            // Saved key is stale, show login
+            localStorage.removeItem(ADMIN_KEY_STORAGE);
+            adminKey = '';
+          }
+          return;
+        }
+        // Success
+        localStorage.setItem(ADMIN_KEY_STORAGE, adminKey);
+        document.getElementById('authGate').classList.add('hidden');
+        document.getElementById('dashboardMain').classList.remove('hidden');
+        load();
+      } catch (_) {
+        if (!silent) document.getElementById('authError').classList.remove('hidden');
+      }
+    }
+
+    function logout() {
+      localStorage.removeItem(ADMIN_KEY_STORAGE);
+      adminKey = '';
+      document.getElementById('dashboardMain').classList.add('hidden');
+      document.getElementById('authGate').classList.remove('hidden');
+      document.getElementById('adminKeyInput').value = '';
+    }
+
     async function load() {
+      const headers = { 'X-Admin-Key': adminKey };
       const [statsRes, ordersRes] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/orders'),
+        fetch('/api/dashboard', { headers }),
+        fetch('/api/orders', { headers }),
       ]);
+
+      if (statsRes.status === 403) { logout(); return; }
+
       const stats  = await statsRes.json();
       const orders = await ordersRes.json();
 
-      // Stats cards
       const rev    = stats.total_revenue || 0;
       const cost   = stats.total_cost    || 0;
       const profit = rev - cost;
@@ -135,9 +195,11 @@
       // Orders table
       const tbody = document.getElementById('ordersBody');
       if (orders.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="8" class="px-5 py-8 text-center text-slate-500">No orders yet. <a href="/" class="text-indigo-400 hover:underline">Create one.</a></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" class="px-5 py-8 text-center text-slate-500">No orders yet.</td></tr>';
         return;
       }
+
+      const tierLabels = { base: 'Base', pro: 'Pro', elite: 'Elite' };
 
       tbody.innerHTML = orders.map(o => {
         const oRev    = o.revenue || 0;
@@ -149,21 +211,25 @@
           'FAILED': 'text-red-400',
         }[o.status] || 'text-slate-400';
 
+        const tierLabel = tierLabels[o.tier] || o.tier || '—';
+        const addons = JSON.parse(o.addons_purchased || '[]');
+        const addonCount = addons.length;
         const time = o.created_at ? new Date(o.created_at).toLocaleString() : '—';
 
         return `<tr class="border-t border-slate-800/50 hover:bg-slate-800/30">
           <td class="px-5 py-3 font-mono text-xs text-slate-400">${o.id}</td>
           <td class="px-5 py-3 font-medium">${o.company_name}</td>
+          <td class="px-5 py-3 text-xs"><span class="px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300">${tierLabel}</span></td>
+          <td class="px-5 py-3 text-xs text-slate-400">${addonCount > 0 ? addonCount + ' add-on' + (addonCount > 1 ? 's' : '') : '—'}</td>
           <td class="px-5 py-3 ${statusColor} font-semibold text-xs">${o.status}</td>
           <td class="px-5 py-3 text-emerald-400">$${oRev.toFixed(2)}</td>
           <td class="px-5 py-3 text-red-400">$${oCost.toFixed(4)}</td>
           <td class="px-5 py-3 font-semibold ${oProfit >= 0 ? 'text-indigo-400' : 'text-red-400'}">$${oProfit.toFixed(2)}</td>
           <td class="px-5 py-3 text-xs text-slate-500">${time}</td>
-          <td class="px-5 py-3"><a href="/report/${o.id}" class="text-indigo-400 hover:underline text-xs">View</a></td>
         </tr>`;
       }).join('');
 
-      // Aggregate cost breakdown
+      // Cost breakdown
       const agg = {};
       orders.forEach(o => {
         try {
@@ -186,11 +252,29 @@
             const labels = {
               'apollo_org': 'Apollo (Org)', 'apollo_people': 'Apollo (People)',
               'apollo_org_resolve': 'Apollo (Resolve)', 'hunter': 'Hunter',
-              'builtwith': 'BuiltWith', 'firecrawl': 'Firecrawl',
-              'tavily': 'Tavily', 'openai': 'OpenAI',
+              'builtwith': 'BuiltWith',
+              'firecrawl_home': 'Firecrawl (Home)',
+              'firecrawl_careers': 'Firecrawl (Careers)',
+              'firecrawl_blog': 'Firecrawl (Blog)',
+              'tavily_news': 'Tavily (News)',
+              'tavily_hiring': 'Tavily (Hiring)',
+              'tavily_competitors': 'Tavily (Competitors)',
+              'openai': 'OpenAI Synthesis',
             };
+            // Clean up addon cost keys: "addon_hiring_pain_tavily" → "Add-on: Hiring Pain (Tavily)"
+            let label = labels[k] || k;
+            if (k.startsWith('addon_')) {
+              const parts = k.replace('addon_', '').split('_');
+              const provider = parts.pop();
+              const addonName = parts.join(' ').replace(/\b\w/g, c => c.toUpperCase());
+              label = `Add-on: ${addonName} (${labels[provider] || provider})`;
+            }
+            if (k.startsWith('upgrade_')) {
+              const provider = k.replace('upgrade_', '');
+              label = `Upgrade (${labels[provider] || provider})`;
+            }
             return `<div class="flex items-center gap-3">
-              <div class="w-32 text-xs text-slate-400 text-right">${labels[k] || k}</div>
+              <div class="w-44 text-xs text-slate-400 text-right truncate">${label}</div>
               <div class="flex-1 bg-slate-800 rounded-full h-2">
                 <div class="bg-indigo-500 h-2 rounded-full" style="width:${pct}%"></div>
               </div>
@@ -200,8 +284,7 @@
       }
     }
 
-    load();
-    setInterval(load, 8000); // auto-refresh
+    setInterval(() => { if (adminKey) load(); }, 8000);
   </script>
 </body>
 </html>

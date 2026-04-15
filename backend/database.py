@@ -20,28 +20,40 @@ def init_db():
             company_domain        TEXT DEFAULT '',
             context               TEXT DEFAULT '',
             client_email          TEXT NOT NULL,
-            tier                  TEXT DEFAULT 'pro',
+            tier                  TEXT DEFAULT 'base',
             status                TEXT DEFAULT 'AWAITING_PAYMENT',
             checkout_session_id   TEXT DEFAULT '',
             company_data          TEXT DEFAULT '{}',
             people_data           TEXT DEFAULT '{}',
             tech_data             TEXT DEFAULT '{}',
             website_data          TEXT DEFAULT '{}',
+            careers_data          TEXT DEFAULT '{}',
+            blog_data             TEXT DEFAULT '{}',
             news_data             TEXT DEFAULT '{}',
+            hiring_data           TEXT DEFAULT '{}',
+            competitor_data       TEXT DEFAULT '{}',
             report                TEXT DEFAULT '',
             revenue               REAL DEFAULT 0.0,
             total_cost            REAL DEFAULT 0.0,
             cost_breakdown        TEXT DEFAULT '{}',
+            addons_purchased      TEXT DEFAULT '[]',
+            pending_action        TEXT DEFAULT '',
             created_at            TEXT NOT NULL,
             paid_at               TEXT,
             completed_at          TEXT,
             error                 TEXT DEFAULT ''
         )
     """)
-    # migrate existing DBs that lack the checkout_session_id column
+    # migrate existing DBs that lack newer columns
     for col, definition in [
         ("checkout_session_id", "TEXT DEFAULT ''"),
-        ("tier",                "TEXT DEFAULT 'pro'"),
+        ("tier",                "TEXT DEFAULT 'base'"),
+        ("careers_data",        "TEXT DEFAULT '{}'"),
+        ("blog_data",           "TEXT DEFAULT '{}'"),
+        ("hiring_data",         "TEXT DEFAULT '{}'"),
+        ("competitor_data",     "TEXT DEFAULT '{}'"),
+        ("addons_purchased",    "TEXT DEFAULT '[]'"),
+        ("pending_action",      "TEXT DEFAULT ''"),
     ]:
         try:
             c.execute(f"ALTER TABLE orders ADD COLUMN {col} {definition}")
@@ -52,7 +64,7 @@ def init_db():
     c.close()
 
 
-def create_order(company_name, company_domain, context, client_email, revenue, tier="pro"):
+def create_order(company_name, company_domain, context, client_email, revenue, tier="base"):
     c = _conn()
     oid = uuid.uuid4().hex[:8]
     now = datetime.now(timezone.utc).isoformat()
@@ -85,6 +97,17 @@ def update_order(oid, **kw):
 def get_all_orders():
     c = _conn()
     rows = c.execute("SELECT * FROM orders ORDER BY created_at DESC").fetchall()
+    c.close()
+    return [dict(r) for r in rows]
+
+
+def get_orders_by_email(email):
+    c = _conn()
+    rows = c.execute(
+        "SELECT id, company_name, company_domain, tier, status, revenue, created_at, completed_at"
+        " FROM orders WHERE LOWER(client_email)=? ORDER BY created_at DESC",
+        (email.strip().lower(),),
+    ).fetchall()
     c.close()
     return [dict(r) for r in rows]
 

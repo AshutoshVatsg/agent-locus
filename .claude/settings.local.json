@@ -28,7 +28,17 @@
       "Bash(curl -s https://beta.paywithlocus.com/skill.json)",
       "WebFetch(domain:beta.buildwithlocus.com)",
       "Bash(.venv/bin/pip install:*)",
-      "Bash(../.venv/bin/uvicorn main:app --reload --port 8000)"
+      "Bash(../.venv/bin/uvicorn main:app --reload --port 8000)",
+      "Bash(ssh -V)",
+      "Bash(chmod +x /tmp/cloudflared)",
+      "Bash(/tmp/cloudflared --version)",
+      "Bash(pkill -f \"uvicorn\")",
+      "Bash(export SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\")",
+      "Bash(/home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app --host 0.0.0.0 --port 8000 --reload)",
+      "Bash(kill 32366 32365)",
+      "Bash(SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\" /home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app:*)",
+      "Bash(/home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/python3:*)",
+      "Bash(SERVER_URL=\"https://roll-edt-ronald-thereafter.trycloudflare.com\" ADMIN_KEY=\"briefbot-owner-2026\" /home/ashutosh/Desktop/Course_S6/agent_locus/.venv/bin/uvicorn main:app:*)"
     ]
   }
 }

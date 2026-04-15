@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en" class="bg-slate-950 text-white">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BriefBot — My Orders</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="min-h-screen flex flex-col">
+
+  <!-- Nav -->
+  <nav class="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
+    <a href="/" class="text-xl font-bold tracking-tight">
+      <span class="text-indigo-400">Brief</span>Bot
+    </a>
+    <a href="/my-orders" class="text-sm text-indigo-400 hover:underline">My Orders</a>
+  </nav>
+
+  <main class="flex-1 flex items-center justify-center px-4 py-12">
+    <div class="max-w-2xl w-full">
+
+      <!-- Lookup form -->
+      <div id="lookupSection" class="text-center">
+        <h1 class="text-3xl font-extrabold mb-2">My Orders</h1>
+        <p class="text-slate-400 mb-6">Enter the email you used to purchase a briefing.</p>
+
+        <form id="lookupForm" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-4">
+          <input id="emailInput" type="email" required placeholder="you@company.com"
+            class="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-2.5 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-indigo-500" />
+          <button type="submit"
+            class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg px-4 py-2.5 transition">
+            Look Up Orders
+          </button>
+          <p id="errorMsg" class="text-red-400 text-sm text-center hidden"></p>
+        </form>
+      </div>
+
+      <!-- Results -->
+      <div id="resultsSection" class="hidden">
+        <div class="flex items-center justify-between mb-6">
+          <div>
+            <h1 class="text-2xl font-extrabold">My Orders</h1>
+            <p id="emailLabel" class="text-sm text-slate-400"></p>
+          </div>
+          <button onclick="resetView()" class="text-sm text-indigo-400 hover:underline">Change email</button>
+        </div>
+
+        <div id="ordersList" class="space-y-3"></div>
+
+        <div id="emptyState" class="hidden text-center py-12">
+          <div class="text-4xl mb-3 opacity-30">?</div>
+          <p class="text-slate-400">No orders found for this email.</p>
+          <a href="/" class="inline-block mt-4 text-indigo-400 hover:underline text-sm">Generate your first briefing</a>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <footer class="border-t border-slate-800 px-6 py-4 text-center text-xs text-slate-500">
+    Payments powered by <a href="https://beta.paywithlocus.com" target="_blank" class="text-indigo-400 hover:underline">Locus</a>
+    &middot; Built for the Locus Paygentic Hackathon
+  </footer>
+
+  <script>
+    const form     = document.getElementById('lookupForm');
+    const err      = document.getElementById('errorMsg');
+    const lookup   = document.getElementById('lookupSection');
+    const results  = document.getElementById('resultsSection');
+    const list     = document.getElementById('ordersList');
+    const empty    = document.getElementById('emptyState');
+    const label    = document.getElementById('emailLabel');
+
+    // Pre-fill from query param or localStorage
+    const params = new URLSearchParams(location.search);
+    const saved  = params.get('email') || localStorage.getItem('briefbot_email') || '';
+    if (saved) {
+      document.getElementById('emailInput').value = saved;
+      if (params.get('email')) fetchOrders(saved);
+    }
+
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const email = document.getElementById('emailInput').value.trim();
+      if (email) fetchOrders(email);
+    });
+
+    async function fetchOrders(email) {
+      err.classList.add('hidden');
+      try {
+        const res = await fetch(`/api/my-orders?email=${encodeURIComponent(email)}`);
+        if (!res.ok) throw new Error((await res.json()).detail || 'Request failed');
+        const orders = await res.json();
+
+        localStorage.setItem('briefbot_email', email);
+        label.textContent = email;
+        lookup.classList.add('hidden');
+        results.classList.remove('hidden');
+
+        if (orders.length === 0) {
+          list.classList.add('hidden');
+          empty.classList.remove('hidden');
+          return;
+        }
+
+        list.classList.remove('hidden');
+        empty.classList.add('hidden');
+
+        const tierLabels = { base: 'Base', pro: 'Pro', elite: 'Elite' };
+        const statusColors = {
+          COMPLETED: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+          PROCESSING: 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20',
+          AWAITING_PAYMENT: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+          FAILED: 'bg-red-500/10 text-red-400 border-red-500/20',
+        };
+
+        list.innerHTML = orders.map(o => {
+          const tier   = tierLabels[o.tier] || o.tier || 'Base';
+          const status = o.status || 'UNKNOWN';
+          const color  = statusColors[status] || statusColors.AWAITING_PAYMENT;
+          const date   = o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '';
+          const canView = status === 'COMPLETED' || status === 'PROCESSING';
+
+          return `<a href="${canView ? '/report/' + o.id : '#'}"
+            class="block bg-slate-900 border border-slate-800 rounded-xl p-4 hover:border-slate-700 transition ${canView ? '' : 'pointer-events-none opacity-60'}">
+            <div class="flex items-center justify-between mb-2">
+              <div class="font-semibold">${o.company_name}</div>
+              <span class="text-xs px-2 py-0.5 rounded-full border ${color}">${status.replace('_', ' ')}</span>
+            </div>
+            <div class="flex items-center gap-4 text-xs text-slate-400">
+              <span>${o.company_domain || ''}</span>
+              <span class="px-2 py-0.5 rounded-full bg-slate-800 text-indigo-300">${tier}</span>
+              <span>$${(o.revenue || 0).toFixed(2)}</span>
+              <span class="ml-auto">${date}</span>
+            </div>
+          </a>`;
+        }).join('');
+
+      } catch (ex) {
+        err.textContent = ex.message;
+        err.classList.remove('hidden');
+      }
+    }
+
+    function resetView() {
+      results.classList.add('hidden');
+      lookup.classList.remove('hidden');
+      document.getElementById('emailInput').focus();
+    }
+  </script>
+</body>
+</html>

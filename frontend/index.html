@@ -11,6 +11,7 @@
     .tier-card{cursor:pointer;transition:all .2s}
     .tier-card.selected{border-color:#6366f1;background:#1e1b4b}
     .tier-card:not(.selected):hover{border-color:#475569}
+    .save-badge{font-size:.65rem;background:#059669;color:#fff;padding:1px 6px;border-radius:9999px;margin-left:6px}
   </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -20,7 +21,10 @@
     <a href="/" class="text-xl font-bold tracking-tight">
       <span class="text-indigo-400">Brief</span>Bot
     </a>
-    <a href="/dashboard" class="text-sm text-slate-400 hover:text-white transition">Dashboard &rarr;</a>
+    <div class="flex items-center gap-4">
+      <a href="/my-orders" class="text-sm text-indigo-400 hover:underline">My Orders</a>
+      <span class="text-sm text-slate-500">Powered by Locus</span>
+    </div>
   </nav>
 
   <!-- Hero -->
@@ -33,8 +37,8 @@
           <span class="text-indigo-400">before the call.</span>
         </h1>
         <p class="text-slate-400 text-lg">
-          Enter a company name. Get a full sales briefing in 30 seconds.<br/>
-          Powered by 6 intelligence sources.
+          Enter a company name. Get a cross-referenced battle plan in 30 seconds.<br/>
+          Start cheap — upgrade only the sections you need.
         </p>
       </div>
 
@@ -70,62 +74,74 @@
           <label class="block text-sm font-medium text-slate-300 mb-3">Choose Your Plan</label>
           <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" id="tierGrid">
 
-            <div class="tier-card border border-slate-700 rounded-xl p-4" data-tier="starter" onclick="selectTier('starter')">
+            <div class="tier-card selected border rounded-xl p-4 relative" data-tier="base" onclick="selectTier('base')">
+              <div class="absolute -top-2.5 left-1/2 -translate-x-1/2">
+                <span class="bg-emerald-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Start Here</span>
+              </div>
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-semibold text-slate-300">Starter</span>
+                <span class="text-sm font-semibold text-white">Base</span>
                 <span class="text-lg font-bold text-emerald-400">$0.75</span>
               </div>
-              <p class="text-xs text-slate-500 mb-3">Company snapshot + news. Fast &amp; affordable.</p>
-              <ul class="text-xs text-slate-400 space-y-1">
-                <li>✓ Apollo org profile</li>
-                <li>✓ Tavily news (5 results)</li>
-                <li>✓ GPT-4o-mini synthesis</li>
-                <li class="text-slate-600">✗ People / contacts</li>
-                <li class="text-slate-600">✗ Tech stack</li>
+              <p class="text-xs text-slate-400 mb-3">Snapshot + tech + news. Add sections later.</p>
+              <ul class="text-xs text-slate-300 space-y-1">
+                <li>&#10003; Company profile (Apollo)</li>
+                <li>&#10003; Tech stack (BuiltWith)</li>
+                <li>&#10003; Website scrape (Firecrawl)</li>
+                <li>&#10003; News &amp; timing signals</li>
+                <li>&#10003; Personalised talking points</li>
               </ul>
+              <div class="mt-3 pt-2 border-t border-slate-700/50 text-xs text-emerald-400/80">
+                + Add sections after for $0.35–$0.50 each
+              </div>
             </div>
 
-            <div class="tier-card selected border rounded-xl p-4 relative" data-tier="pro" onclick="selectTier('pro')">
+            <div class="tier-card border border-slate-700 rounded-xl p-4 relative" data-tier="pro" onclick="selectTier('pro')">
               <div class="absolute -top-2.5 left-1/2 -translate-x-1/2">
-                <span class="bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Most Popular</span>
+                <span class="bg-indigo-600 text-white text-xs font-semibold px-2 py-0.5 rounded-full">Popular</span>
               </div>
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-semibold text-white">Pro</span>
-                <span class="text-lg font-bold text-emerald-400">$1.50</span>
+                <span class="text-sm font-semibold text-slate-300">Pro Bundle</span>
+                <span class="text-lg font-bold text-emerald-400">$1.75</span>
               </div>
-              <p class="text-xs text-slate-400 mb-3">Full 6-source intel + GPT-4o synthesis.</p>
-              <ul class="text-xs text-slate-300 space-y-1">
-                <li>✓ Apollo org + people</li>
-                <li>✓ Hunter email lookup</li>
-                <li>✓ BuiltWith tech stack</li>
-                <li>✓ Firecrawl website</li>
-                <li>✓ GPT-4o synthesis</li>
+              <p class="text-xs text-slate-500 mb-3">Everything + hiring pain + decision-makers.</p>
+              <ul class="text-xs text-slate-400 space-y-1">
+                <li>&#10003; Everything in Base</li>
+                <li>&#10003; Careers page analysis</li>
+                <li>&#10003; Hiring pain detector</li>
+                <li>&#10003; Decision-maker map</li>
+                <li>&#10003; Tech displacement map</li>
               </ul>
+              <div class="mt-3 pt-2 border-t border-slate-700/50 text-xs text-indigo-400/80">
+                <span class="save-badge">Save $0.40</span> vs buying add-ons separately
+              </div>
             </div>
 
             <div class="tier-card border border-slate-700 rounded-xl p-4" data-tier="elite" onclick="selectTier('elite')">
               <div class="flex items-center justify-between mb-2">
-                <span class="text-sm font-semibold text-slate-300">Elite</span>
-                <span class="text-lg font-bold text-yellow-400">$3.00</span>
+                <span class="text-sm font-semibold text-slate-300">Elite Bundle</span>
+                <span class="text-lg font-bold text-yellow-400">$3.25</span>
               </div>
-              <p class="text-xs text-slate-500 mb-3">Deep research for high-stakes calls.</p>
+              <p class="text-xs text-slate-500 mb-3">Full war room for high-stakes calls.</p>
               <ul class="text-xs text-slate-400 space-y-1">
-                <li>✓ Everything in Pro</li>
-                <li>✓ 10 news results</li>
-                <li>✓ Competitor research</li>
-                <li>✓ GPT-4o (8k tokens)</li>
-                <li>✓ Account intel summary</li>
+                <li>&#10003; Everything in Pro</li>
+                <li>&#10003; Blog &amp; initiative detection</li>
+                <li>&#10003; Competitor displacement</li>
+                <li>&#10003; Timing triangulation</li>
+                <li>&#10003; Strategic outreach sequence</li>
               </ul>
+              <div class="mt-3 pt-2 border-t border-slate-700/50 text-xs text-yellow-400/80">
+                <span class="save-badge">Save $0.70</span> vs buying add-ons separately
+              </div>
             </div>
 
           </div>
         </div>
 
-        <input type="hidden" id="selectedTier" value="pro" />
+        <input type="hidden" id="selectedTier" value="base" />
 
         <button id="submitBtn" type="submit"
           class="w-full bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-lg px-4 py-3 transition flex items-center justify-center gap-2">
-          Generate Briefing — $1.50 USDC
+          Generate Briefing — $0.75 USDC
         </button>
 
         <p id="errorMsg" class="text-red-400 text-sm text-center hidden"></p>
@@ -135,18 +151,18 @@
       <div class="mt-10 grid grid-cols-3 gap-4 text-center text-sm text-slate-400">
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">1</div>
-          <div class="font-medium text-white">Choose a plan</div>
-          <div>Pick your intel depth</div>
+          <div class="font-medium text-white">Start with Base</div>
+          <div>$0.75 for real intel</div>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">2</div>
-          <div class="font-medium text-white">Agent researches</div>
-          <div>APIs run in parallel</div>
+          <div class="font-medium text-white">See what's found</div>
+          <div>Preview each add-on</div>
         </div>
         <div class="bg-slate-900 border border-slate-800 rounded-xl p-4">
           <div class="text-2xl mb-2">3</div>
-          <div class="font-medium text-white">Get briefing</div>
-          <div>Ready in ~30s</div>
+          <div class="font-medium text-white">Add what you need</div>
+          <div>Pay per section or upgrade</div>
         </div>
       </div>
 
@@ -169,7 +185,7 @@
   </footer>
 
   <script>
-    const TIER_PRICES = { starter: '0.75', pro: '1.50', elite: '3.00' };
+    const TIER_PRICES = { base: '0.75', pro: '1.75', elite: '3.25' };
     const form = document.getElementById('orderForm');
     const btn  = document.getElementById('submitBtn');
     const err  = document.getElementById('errorMsg');
@@ -181,20 +197,20 @@
       btn.textContent = `Generate Briefing — $${TIER_PRICES[tier]} USDC`;
     }
 
-    // Fetch live prices from backend and update tier cards
+    // Fetch live prices
     (async () => {
       try {
-        const res  = await fetch('/api/dashboard');
+        const res  = await fetch('/api/tiers');
         const data = await res.json();
         const tiers = data.tiers || {};
         Object.entries(tiers).forEach(([key, cfg]) => {
           TIER_PRICES[key] = parseFloat(cfg.price).toFixed(2);
           const card = document.querySelector(`[data-tier="${key}"]`);
           if (card) {
-            card.querySelector('.font-bold').textContent = `$${TIER_PRICES[key]}`;
+            const priceEl = card.querySelector('.font-bold');
+            if (priceEl) priceEl.textContent = `$${TIER_PRICES[key]}`;
           }
         });
-        // refresh button label
         selectTier(document.getElementById('selectedTier').value);
       } catch (_) {}
     })();

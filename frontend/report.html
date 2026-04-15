@@ -8,9 +8,9 @@
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <style>
     .loader-lg{width:40px;height:40px;border:4px solid #4f46e5;border-bottom-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite}
+    .loader-sm{width:16px;height:16px;border:2px solid #fff;border-bottom-color:transparent;border-radius:50%;display:inline-block;animation:spin .6s linear infinite}
     @keyframes spin{to{transform:rotate(360deg)}}
 
-    /* Section card prose */
     .section-body h1,.section-body h2,.section-body h3{color:#e2e8f0;margin-top:1em;margin-bottom:.4em}
     .section-body h2{font-size:1.1rem;font-weight:700;border-bottom:1px solid #334155;padding-bottom:.3em}
     .section-body h3{font-size:1rem;font-weight:600}
@@ -25,9 +25,11 @@
     .section-body blockquote{border-left:3px solid #4f46e5;padding-left:.8em;color:#94a3b8;margin:.8em 0}
     .section-body a{color:#818cf8;text-decoration:underline}
 
-    /* Print styles */
+    .addon-card{transition:all .2s}
+    .addon-card:hover{border-color:#4f46e5;transform:translateY(-1px)}
+
     @media print {
-      nav, #actionBar, #statusBar, #stages, #metaCardActions, footer { display: none !important; }
+      nav, #statusBar, #stages, #metaCardActions, #addonSection, #upgradeSection, footer { display: none !important; }
       body { background: white !important; color: black !important; }
       .section-card { border: 1px solid #ddd !important; break-inside: avoid; margin-bottom: 1rem; }
       .section-body p, .section-body li, .section-body td { color: #333 !important; }
@@ -42,9 +44,9 @@
     <a href="/" class="text-xl font-bold tracking-tight">
       <span class="text-indigo-400">Brief</span>Bot
     </a>
-    <div class="flex gap-4 text-sm">
-      <a href="/" class="text-slate-400 hover:text-white transition">&larr; New Briefing</a>
-      <a href="/dashboard" class="text-slate-400 hover:text-white transition">Dashboard</a>
+    <div class="flex items-center gap-4">
+      <a href="/my-orders" class="text-sm text-indigo-400 hover:underline">My Orders</a>
+      <a href="/" class="text-sm text-slate-400 hover:text-white transition">&larr; New Briefing</a>
     </div>
   </nav>
 
@@ -75,7 +77,7 @@
           <div id="metaTier" class="font-semibold text-indigo-300">—</div>
         </div>
         <div>
-          <div class="text-slate-500">You Paid</div>
+          <div class="text-slate-500">Paid</div>
           <div id="metaCost" class="font-semibold text-emerald-400">—</div>
         </div>
         <div>
@@ -83,19 +85,18 @@
           <div id="metaStatus" class="font-semibold">—</div>
         </div>
       </div>
-      <!-- Action buttons -->
       <div id="metaCardActions" class="flex flex-wrap gap-2 justify-center border-t border-slate-800 pt-3">
         <button onclick="window.print()"
           class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition">
-          🖨 Save as PDF
+          Print / PDF
         </button>
         <button id="emailBtn" onclick="sendEmail()"
           class="flex items-center gap-1.5 px-4 py-2 bg-indigo-700 hover:bg-indigo-600 text-sm rounded-lg transition">
-          ✉ Send to my email
+          Send to my email
         </button>
         <button onclick="copyAll()"
           class="flex items-center gap-1.5 px-4 py-2 bg-slate-800 hover:bg-slate-700 text-sm rounded-lg transition">
-          📋 Copy full report
+          Copy full report
         </button>
       </div>
     </div>
@@ -103,19 +104,36 @@
     <!-- Pipeline stages -->
     <div id="stages" class="mb-6 bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3">Agent Pipeline</div>
-      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-2 text-xs text-center">
+      <div class="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-2 text-xs text-center">
         <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-apollo">Apollo</div>
         <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-hunter">Hunter</div>
         <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-builtwith">BuiltWith</div>
-        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-firecrawl">Firecrawl</div>
-        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-tavily">Tavily</div>
-        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-openai">OpenAI</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-firecrawl-home">Website</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-firecrawl-careers">Careers</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-firecrawl-blog">Blog</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-tavily-news">News</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-tavily-hiring">Hiring</div>
+        <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-openai">Synthesis</div>
         <div class="stage-pill bg-slate-800 rounded-lg py-2 px-1" id="s-done">Done</div>
       </div>
     </div>
 
-    <!-- Structured Section Cards (shown when complete) -->
+    <!-- Report sections (rendered from markdown) -->
     <div id="reportSections" class="hidden space-y-4"></div>
+
+    <!-- ═══ ADD-ON CARDS ═══ -->
+    <div id="addonSection" class="hidden mt-6 space-y-3">
+      <div class="flex items-center gap-2 mb-1">
+        <span class="text-sm font-semibold text-slate-300">Enhance Your Report</span>
+        <span class="text-xs text-slate-500">— pay only for what you need</span>
+      </div>
+      <div id="addonCards" class="grid grid-cols-1 sm:grid-cols-2 gap-3"></div>
+    </div>
+
+    <!-- ═══ UPGRADE BANNER ═══ -->
+    <div id="upgradeSection" class="hidden mt-4">
+      <div id="upgradeBanners" class="space-y-3"></div>
+    </div>
 
     <!-- Error -->
     <div id="errorBlock" class="hidden bg-red-900/30 border border-red-800 rounded-xl p-6 text-center">
@@ -134,16 +152,18 @@
     let pollTimer = null;
     let orderData = null;
 
-    // Section definitions: heading text → icon + accent colour
+    // Section icon/colour mapping
     const SECTION_META = {
-      'company snapshot':        { icon: '🏢', color: 'indigo' },
-      'key decision makers':     { icon: '👥', color: 'violet' },
-      'technology stack':        { icon: '🛠', color: 'cyan' },
-      'product & market positioning': { icon: '📊', color: 'blue' },
-      'recent signals':          { icon: '📰', color: 'amber' },
-      'competitive landscape':   { icon: '⚔️', color: 'rose' },
-      'account intelligence summary': { icon: '🔍', color: 'purple' },
-      'recommended talking points':   { icon: '🎯', color: 'emerald' },
+      'company snapshot':            { icon: '&#x1F3E2;', color: 'indigo' },
+      'hiring pain detector':        { icon: '&#x1F525;', color: 'rose' },
+      'company initiatives':         { icon: '&#x1F680;', color: 'purple' },
+      'decision-maker':              { icon: '&#x1F465;', color: 'violet' },
+      'tech stack':                  { icon: '&#x26A1;',  color: 'cyan' },
+      'competitive landscape':       { icon: '&#x2694;&#xFE0F;', color: 'amber' },
+      'timing signal':               { icon: '&#x23F0;',  color: 'blue' },
+      'recent news':                 { icon: '&#x1F4F0;', color: 'amber' },
+      'recommended battle plan':     { icon: '&#x1F3AF;', color: 'emerald' },
+      'recommended talking points':  { icon: '&#x1F3AF;', color: 'emerald' },
     };
 
     const COLOR_CLASSES = {
@@ -158,41 +178,102 @@
       slate:   ['border-slate-700/50',   'bg-slate-700/20',  'text-slate-300'],
     };
 
+    const ADDON_ICONS = {
+      fire:   '&#x1F525;',
+      people: '&#x1F465;',
+      rocket: '&#x1F680;',
+      swords: '&#x2694;&#xFE0F;',
+    };
+
+    // ─── LOAD ───
+
     async function loadOrder() {
       try {
         const res = await fetch(`/api/orders/${orderId}`);
         if (!res.ok) throw new Error('Order not found');
         orderData = await res.json();
         render(orderData);
-        if (orderData.status === 'PROCESSING' || orderData.status === 'AWAITING_PAYMENT') {
+
+        const hasPending = orderData.pending_action && orderData.pending_action !== '';
+        const needsPoll  = orderData.status === 'PROCESSING'
+                        || orderData.status === 'AWAITING_PAYMENT'
+                        || (orderData.status === 'COMPLETED' && hasPending);
+
+        if (needsPoll) {
           pollTimer = setTimeout(loadOrder, 2500);
+        } else if (orderData.status === 'COMPLETED') {
+          loadOptions();
         }
       } catch (e) {
         showError(e.message);
       }
     }
 
+    async function loadOptions() {
+      const hasPending = orderData && orderData.pending_action && orderData.pending_action !== '';
+
+      if (hasPending) {
+        // Show a cancel button so user can abort and retry
+        const container = document.getElementById('addonCards');
+        container.innerHTML = `
+          <div class="col-span-full bg-slate-900 border border-yellow-700/50 rounded-xl p-4 flex items-center justify-between">
+            <div>
+              <div class="text-sm font-semibold text-yellow-300">Payment pending…</div>
+              <div class="text-xs text-slate-400 mt-1">Waiting for checkout to complete. Didn't pay? Cancel to try again.</div>
+            </div>
+            <button onclick="cancelPending()"
+              class="flex-shrink-0 ml-4 bg-slate-700 hover:bg-slate-600 text-white text-sm rounded-lg px-4 py-2 transition">
+              Cancel &amp; Retry
+            </button>
+          </div>`;
+        document.getElementById('addonSection').classList.remove('hidden');
+        document.getElementById('upgradeSection').classList.add('hidden');
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}/options`);
+        if (!res.ok) return;
+        const opts = await res.json();
+        renderAddons(opts.addons);
+        renderUpgrades(opts.upgrades, opts.current_tier);
+      } catch (_) {}
+    }
+
+    // ─── RENDER ───
+
     function render(o) {
-      const tierLabels = { starter: 'Starter', pro: 'Pro', elite: 'Elite' };
+      const tierLabels = { base: 'Base', pro: 'Pro', elite: 'Elite' };
       document.getElementById('metaCompany').textContent = o.company_name;
       document.getElementById('metaDomain').textContent  = o.company_domain || '—';
-      document.getElementById('metaTier').textContent    = tierLabels[o.tier] || o.tier || 'Pro';
+      document.getElementById('metaTier').textContent    = tierLabels[o.tier] || o.tier || 'Base';
       document.getElementById('metaCost').textContent    = '$' + (o.revenue || 0).toFixed(2) + ' USDC';
 
       if (o.status === 'AWAITING_PAYMENT') {
         document.getElementById('statusBar').classList.remove('hidden');
         document.getElementById('statusTitle').textContent = 'Verifying payment…';
-        document.getElementById('statusSub').textContent   = 'Waiting for USDC payment confirmation on Base. This takes 10–30 seconds.';
+        document.getElementById('statusSub').textContent   = 'Waiting for USDC confirmation on Base. 10–30 seconds.';
         document.getElementById('stages').classList.add('hidden');
 
       } else if (o.status === 'COMPLETED') {
-        clearTimeout(pollTimer);
-        document.getElementById('statusBar').classList.add('hidden');
-        document.getElementById('metaCard').classList.remove('hidden');
-        document.getElementById('metaStatus').textContent = 'COMPLETED';
-        document.getElementById('metaStatus').className = 'font-semibold text-emerald-400';
-        document.getElementById('stages').classList.add('hidden');
+        const hasPending = o.pending_action && o.pending_action !== '';
 
+        if (hasPending) {
+          // Addon/upgrade paid — waiting for backend to detect payment
+          document.getElementById('statusBar').classList.remove('hidden');
+          document.getElementById('statusTitle').textContent = 'Processing add-on…';
+          document.getElementById('statusSub').textContent   = 'Verifying payment and generating new section. A few seconds.';
+          document.getElementById('stages').classList.add('hidden');
+        } else {
+          document.getElementById('statusBar').classList.add('hidden');
+        }
+
+        document.getElementById('metaCard').classList.remove('hidden');
+        document.getElementById('metaStatus').textContent = hasPending ? 'UPGRADING' : 'COMPLETED';
+        document.getElementById('metaStatus').className = hasPending
+          ? 'font-semibold text-yellow-400'
+          : 'font-semibold text-emerald-400';
+        document.getElementById('stages').classList.add('hidden');
         renderSections(o.report || '');
 
       } else if (o.status === 'FAILED') {
@@ -203,15 +284,21 @@
         // PROCESSING
         document.getElementById('statusBar').classList.remove('hidden');
         document.getElementById('statusTitle').textContent = 'Generating briefing…';
-        document.getElementById('statusSub').textContent   = 'Your agent is gathering intelligence from APIs. This takes ~30 seconds.';
+        document.getElementById('statusSub').textContent   = 'Agent is cross-referencing live data sources. ~30 seconds.';
         document.getElementById('stages').classList.remove('hidden');
 
         const breakdown = JSON.parse(o.cost_breakdown || '{}');
         const stageMap = {
           'apollo_org': 's-apollo', 'apollo_people': 's-apollo',
+          'apollo_org_resolve': 's-apollo',
           'hunter': 's-hunter', 'builtwith': 's-builtwith',
-          'firecrawl': 's-firecrawl', 'tavily': 's-tavily',
-          'tavily_competitors': 's-tavily', 'openai': 's-openai',
+          'firecrawl_home': 's-firecrawl-home',
+          'firecrawl_careers': 's-firecrawl-careers',
+          'firecrawl_blog': 's-firecrawl-blog',
+          'tavily_news': 's-tavily-news',
+          'tavily_hiring': 's-tavily-hiring',
+          'tavily_competitors': 's-tavily-news',
+          'openai': 's-openai',
         };
         for (const key of Object.keys(breakdown)) {
           const el = document.getElementById(stageMap[key]);
@@ -226,53 +313,181 @@
     function renderSections(markdown) {
       const container = document.getElementById('reportSections');
       container.innerHTML = '';
-
-      // Split only on numbered top-level sections: "## 1. ", "## 2. ", etc.
-      // This prevents any ## inside a section body from creating extra cards.
       const parts = markdown.split(/^(?=## \d+\.)/m).filter(p => p.trim());
 
       if (parts.length <= 1) {
-        // Fallback: no clear sections, render as single card
-        container.innerHTML = `
-          <div class="section-card bg-slate-900 border border-slate-700/50 rounded-2xl overflow-hidden">
-            <div class="section-body p-6">${marked.parse(markdown)}</div>
-          </div>`;
+        // also try splitting on just "## " for addon-appended sections
+        const altParts = markdown.split(/^(?=## )/m).filter(p => p.trim());
+        if (altParts.length > 1) {
+          altParts.forEach(p => renderOneSection(container, p));
+        } else {
+          container.innerHTML = `
+            <div class="section-card bg-slate-900 border border-slate-700/50 rounded-2xl overflow-hidden">
+              <div class="section-body p-6">${marked.parse(markdown)}</div>
+            </div>`;
+        }
         container.classList.remove('hidden');
         return;
       }
 
-      parts.forEach(part => {
-        const lines   = part.trim().split('\n');
-        // Strip leading "## N. " to get a clean heading title
-        const heading = lines[0].replace(/^##\s*\d+\.\s*/, '').trim();
-        const body    = lines.slice(1).join('\n').trim();
-        const key     = heading.toLowerCase();
+      parts.forEach(part => renderOneSection(container, part));
+      container.classList.remove('hidden');
+    }
 
-        const meta    = Object.entries(SECTION_META).find(([k]) => key.includes(k));
-        const icon    = meta ? meta[1].icon  : '📄';
-        const color   = meta ? meta[1].color : 'slate';
-        const [border, bg, text] = COLOR_CLASSES[color];
+    function renderOneSection(container, part) {
+      const lines   = part.trim().split('\n');
+      const heading = lines[0].replace(/^##\s*\d*\.?\s*/, '').trim();
+      const body    = lines.slice(1).join('\n').trim();
+      const key     = heading.toLowerCase();
 
-        const card = document.createElement('div');
-        card.className = `section-card bg-slate-900 border ${border} rounded-2xl overflow-hidden`;
-        card.innerHTML = `
-          <div class="flex items-center justify-between px-5 py-3 ${bg} border-b ${border} cursor-pointer select-none"
-               onclick="toggleSection(this)">
-            <div class="flex items-center gap-2">
-              <span class="text-lg">${icon}</span>
-              <span class="font-semibold ${text}">${heading}</span>
-            </div>
-            <div class="flex items-center gap-2">
-              <button onclick="copySection(event, this)" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-700 transition">Copy</button>
-              <span class="chevron ${text} text-sm transition-transform">▼</span>
-            </div>
+      const meta    = Object.entries(SECTION_META).find(([k]) => key.includes(k));
+      const icon    = meta ? meta[1].icon  : '&#x1F4C4;';
+      const color   = meta ? meta[1].color : 'slate';
+      const [border, bg, text] = COLOR_CLASSES[color];
+
+      const card = document.createElement('div');
+      card.className = `section-card bg-slate-900 border ${border} rounded-2xl overflow-hidden`;
+      card.innerHTML = `
+        <div class="flex items-center justify-between px-5 py-3 ${bg} border-b ${border} cursor-pointer select-none"
+             onclick="toggleSection(this)">
+          <div class="flex items-center gap-2">
+            <span class="text-lg">${icon}</span>
+            <span class="font-semibold ${text}">${heading}</span>
           </div>
-          <div class="section-body section-content px-5 py-4">${marked.parse(body)}</div>`;
+          <div class="flex items-center gap-2">
+            <button onclick="copySection(event, this)" class="text-xs text-slate-400 hover:text-white px-2 py-1 rounded bg-slate-800/60 hover:bg-slate-700 transition">Copy</button>
+            <span class="chevron ${text} text-sm transition-transform">&#x25BC;</span>
+          </div>
+        </div>
+        <div class="section-body section-content px-5 py-4">${marked.parse(body)}</div>`;
+      container.appendChild(card);
+    }
+
+    // ─── ADD-ON CARDS ───
+
+    function renderAddons(addons) {
+      const keys = Object.keys(addons || {});
+      if (keys.length === 0) {
+        document.getElementById('addonSection').classList.add('hidden');
+        return;
+      }
+
+      const container = document.getElementById('addonCards');
+      container.innerHTML = '';
+
+      keys.forEach(key => {
+        const a = addons[key];
+        const iconHtml = ADDON_ICONS[a.icon] || '&#x2795;';
+        const card = document.createElement('div');
+        card.className = 'addon-card bg-slate-900 border border-slate-700/50 rounded-xl p-4 flex flex-col justify-between';
+        card.id = `addon-${key}`;
+        card.innerHTML = `
+          <div>
+            <div class="flex items-center gap-2 mb-2">
+              <span class="text-lg">${iconHtml}</span>
+              <span class="font-semibold text-sm text-white">${a.label}</span>
+            </div>
+            <p class="text-xs text-slate-400 mb-3">${a.teaser}</p>
+          </div>
+          <button onclick="purchaseAddon('${key}')"
+            class="addon-btn w-full flex items-center justify-center gap-2 bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold rounded-lg px-3 py-2 transition">
+            <span style="font-size:1.1em">+</span> Add — $${a.price.toFixed(2)}
+          </button>`;
         container.appendChild(card);
       });
 
-      container.classList.remove('hidden');
+      document.getElementById('addonSection').classList.remove('hidden');
     }
+
+    function renderUpgrades(upgrades, currentTier) {
+      const keys = Object.keys(upgrades || {});
+      if (keys.length === 0) {
+        document.getElementById('upgradeSection').classList.add('hidden');
+        return;
+      }
+
+      const container = document.getElementById('upgradeBanners');
+      container.innerHTML = '';
+
+      const tierLabels = { base: 'Base', pro: 'Pro', elite: 'Elite' };
+
+      keys.forEach(key => {
+        const u = upgrades[key];
+        const saved = (u.full_price - u.upgrade_price).toFixed(2);
+        const banner = document.createElement('div');
+        banner.className = 'bg-gradient-to-r from-indigo-900/40 to-purple-900/40 border border-indigo-700/40 rounded-xl p-4 flex items-center justify-between';
+        banner.id = `upgrade-${key}`;
+        banner.innerHTML = `
+          <div>
+            <div class="text-sm font-semibold text-white">
+              Upgrade to ${u.label}
+              <span class="ml-2 text-xs font-normal text-emerald-400">Save $${saved} vs buying outright</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-1">${u.description}</div>
+          </div>
+          <button onclick="purchaseUpgrade('${key}')"
+            class="upgrade-btn flex-shrink-0 ml-4 bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-semibold rounded-lg px-5 py-2.5 transition">
+            Upgrade — $${u.upgrade_price.toFixed(2)}
+          </button>`;
+        container.appendChild(banner);
+      });
+
+      document.getElementById('upgradeSection').classList.remove('hidden');
+    }
+
+    // ─── PURCHASE FLOWS ───
+
+    async function purchaseAddon(key) {
+      const card = document.getElementById(`addon-${key}`);
+      const btn = card.querySelector('.addon-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader-sm"></span> Processing…';
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}/addon`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ addon_key: key }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed');
+        window.location.href = data.checkout_url;
+      } catch (ex) {
+        btn.disabled = false;
+        btn.textContent = 'Error: ' + ex.message;
+        setTimeout(() => {
+          btn.innerHTML = '<span style="font-size:1.1em">+</span> Retry';
+          btn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    async function purchaseUpgrade(tier) {
+      const banner = document.getElementById(`upgrade-${tier}`);
+      const btn = banner.querySelector('.upgrade-btn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="loader-sm"></span> Processing…';
+
+      try {
+        const res = await fetch(`/api/orders/${orderId}/upgrade`, {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ target_tier: tier }),
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.detail || 'Failed');
+        window.location.href = data.checkout_url;
+      } catch (ex) {
+        btn.disabled = false;
+        btn.textContent = 'Error: ' + ex.message;
+        setTimeout(() => {
+          btn.textContent = 'Retry';
+          btn.disabled = false;
+        }, 2000);
+      }
+    }
+
+    // ─── UTILITIES ───
 
     function toggleSection(header) {
       const content = header.nextElementSibling;
@@ -295,8 +510,9 @@
       if (orderData?.report) {
         navigator.clipboard.writeText(orderData.report).then(() => {
           const btn = event.target;
-          btn.textContent = '✓ Copied!';
-          setTimeout(() => btn.textContent = '📋 Copy full report', 1500);
+          const orig = btn.textContent;
+          btn.textContent = 'Copied!';
+          setTimeout(() => btn.textContent = orig, 1500);
         });
       }
     }
@@ -305,16 +521,16 @@
       if (!orderData) return;
       const btn = document.getElementById('emailBtn');
       btn.disabled = true;
-      btn.textContent = '⏳ Sending…';
+      btn.textContent = 'Sending…';
       try {
         const res = await fetch(`/api/orders/${orderId}/send-email`, { method: 'POST' });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed to send');
-        btn.textContent = '✓ Sent!';
-        setTimeout(() => { btn.textContent = '✉ Send to my email'; btn.disabled = false; }, 3000);
+        btn.textContent = 'Sent!';
+        setTimeout(() => { btn.textContent = 'Send to my email'; btn.disabled = false; }, 3000);
       } catch (ex) {
-        btn.textContent = '✗ ' + ex.message;
-        setTimeout(() => { btn.textContent = '✉ Send to my email'; btn.disabled = false; }, 3000);
+        btn.textContent = 'Error: ' + ex.message;
+        setTimeout(() => { btn.textContent = 'Send to my email'; btn.disabled = false; }, 3000);
       }
     }
 
@@ -324,6 +540,23 @@
       document.getElementById('errorBlock').classList.remove('hidden');
       document.getElementById('errorText').textContent = msg;
     }
+
+    async function cancelPending() {
+      try {
+        await fetch(`/api/orders/${orderId}/cancel-pending`, { method: 'POST' });
+      } catch (_) {}
+      // Refresh everything
+      clearTimeout(pollTimer);
+      loadOrder();
+    }
+
+    // Reset state when user navigates back via browser back button
+    window.addEventListener('pageshow', (e) => {
+      if (e.persisted) {
+        clearTimeout(pollTimer);
+        loadOrder();
+      }
+    });
 
     loadOrder();
   </script>
