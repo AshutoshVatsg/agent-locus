@@ -22,18 +22,18 @@ TIER_CONFIG = {
         "price":      0.75,
         "label":      "Base",
         "model":      "gpt-4o-mini",
-        "max_tokens": 2500,
+        "max_tokens": 3500,
         "tavily_results": 5,
         "apis": [
             "apollo_org", "builtwith", "firecrawl_home", "tavily", "openai",
         ],
-        "description": "Company snapshot, tech stack, news signals, and personalised talking points.",
+        "description": "Company snapshot, tech stack, timing signals, deal risks, talking points, and deep insights.",
     },
     "pro": {
         "price":      1.75,
         "label":      "Pro",
         "model":      "gpt-4o",
-        "max_tokens": 5000,
+        "max_tokens": 6000,
         "tavily_results": 5,
         "apis": [
             "apollo_org", "apollo_people", "hunter", "builtwith",
@@ -41,13 +41,13 @@ TIER_CONFIG = {
             "tavily", "tavily_hiring",
             "openai",
         ],
-        "description": "Full intel + hiring pain detection + decision-maker mapping.",
+        "description": "Full intel + hiring pain + decision-makers + deal risks + battle plan + deep insights.",
     },
     "elite": {
         "price":      3.25,
         "label":      "Elite",
         "model":      "gpt-4o",
-        "max_tokens": 8000,
+        "max_tokens": 10000,
         "tavily_results": 10,
         "apis": [
             "apollo_org", "apollo_people", "hunter", "builtwith",

@@ -4,15 +4,20 @@ summaries — you produce deeply cross-referenced, actionable briefings that mak
 salespeople sound like they spent days researching a prospect.
 
 Rules:
+- FORMAT: Use bullet points, tables, and short punchy lines. NO long paragraphs. \
+  Every insight should be scannable in 3 seconds. Bold the key takeaway in each bullet.
 - CROSS-REFERENCE data sources. Connect hiring signals to pain points, tech stack \
   to displacement opportunities, news to timing angles. Every insight must link \
   multiple data points.
 - Be SPECIFIC — cite names, dates, job titles, technologies, dollar amounts, \
   project names. No vague generalities.
-- Write as if coaching a salesperson before a high-stakes call. Every sentence \
+- Write as if coaching a salesperson before a high-stakes call. Every bullet \
   should answer: "What do I SAY and WHY?"
 - Structure output in clean Markdown with EXACTLY the section headings specified.
 - Each section must start with its exact heading (e.g. "## 1. Company Snapshot").
+- RECENCY FILTER: For news and signals, prioritise the last 6 months. Ignore \
+  anything older than 12 months unless it is a major strategic shift. Always \
+  include dates so the reader knows how fresh the intel is.
 - If a data source returned an error or empty result, note it briefly and work \
   with what you have.
 - NEVER fabricate data. Only use what is provided below.
@@ -48,26 +53,52 @@ Create a sales pitch-prep briefing for **{company}**.
 {news_data}
 
 ---
-## OUTPUT — use exactly these sections
+## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
 
 ## 1. Company Snapshot
-One paragraph: what they do, HQ, size, funding stage, key metrics.
+Bullet points only:
+- **What they do:** one line
+- **HQ / Size / Funding:** one line
+- **Key metrics:** revenue, headcount, growth signals
+- **Strategic focus:** what they care about right now
 
 ## 2. Tech Stack & Opportunities
-Bullet list of notable technologies they use (BuiltWith). For each one \
-relevant to the seller's context, note whether it's a potential integration \
-point, a competitor to displace, or a gap to fill.
+Table format:
+
+| Technology | Category | Opportunity for Seller |
+|-----------|----------|----------------------|
+
+For each relevant tech: **Integration** / **Displace** / **Gap to fill** — one line why.
 
 ## 3. Timing Signals
-Why NOW is the right time to reach out. Cross-reference news (funding, \
-launches, leadership changes) with any other signals. Each signal should \
-end with a one-line pitch angle.
+Only include signals from the **last 6 months**. For each:
+- **Signal:** what happened (with date)
+- **Why it matters:** one line connecting it to seller's context
+- **Pitch angle:** what to say about it
 
-## 4. Recommended Talking Points
-Personalised to the seller's context:
-- 3 opening hooks that reference specific, recent company events
-- 3 pain points to probe (tied to tech stack or news signals)
-- Recommended next steps"""
+## 4. Why You Might Lose This Deal
+Be brutally honest. Bullet points:
+- **Competitor risk:** Do they already use a competing product? (check tech stack)
+- **Build vs buy:** Could their engineering team build this internally? \
+  (check hiring signals, team size)
+- **Budget/timing risk:** Any signs of cost-cutting, layoffs, or freezes?
+- **Champion gap:** Do you have a clear path to a decision-maker?
+
+For each risk, add a one-line mitigation strategy.
+
+## 5. Recommended Talking Points
+Bullet format:
+- **3 opening hooks** — each references a specific, dated company event
+- **3 pain points to probe** — tied to tech stack gaps or news signals
+- **Recommended next steps** — who to contact, what channel, what to say
+
+## 6. Critical Deep Insights
+3-5 bullet points that connect the dots across ALL data. Each insight must:
+- Link 2+ data sources (e.g. tech stack + news + hiring)
+- Be directly actionable for the seller's specific product
+- Answer: "What does this mean for MY deal, specifically?"
+
+Format: **Insight:** [cross-referenced finding] → **Action:** [what to do]"""
 
 
 SYNTHESIS_USER_PRO = """\
@@ -100,23 +131,29 @@ Create a cross-referenced sales briefing for **{company}**.
 {hiring_data}
 
 ---
-## OUTPUT — use exactly these sections
+## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
 
 ## 1. Company Snapshot
-One paragraph: what they do, HQ, size, funding stage, key metrics.
+Bullet points only:
+- **What they do:** one line
+- **HQ / Size / Funding:** one line
+- **Key metrics:** revenue, headcount, growth signals
+- **Strategic focus:** what they care about right now
+- **Recent momentum:** latest funding, product launch, or leadership change (with date)
 
 ## 2. Hiring Pain Detector
-Analyse the careers page scrape and hiring signals. Extract specific job \
-titles and responsibilities being hired for. For each role cluster, explain:
-- What PROBLEM the company is trying to solve by hiring for this
-- How the seller's product/service DIRECTLY addresses that problem
-- A suggested talk track referencing the specific job posting
+For each role cluster being hired, use this format:
+- **Role:** [exact job title from posting]
+- **Problem it reveals:** one line on what business pain this hiring signals
+- **Your angle:** how the seller's product directly addresses this
+- **Talk track:** one ready-to-use sentence referencing the posting
 
-Example format:
-> "They're hiring 3 Senior Platform Engineers to 'migrate legacy services \
-to Kubernetes' (Careers Page). This signals infrastructure modernisation \
-pain. **Your pitch angle:** Lead with container orchestration — they have \
-budget allocated for exactly this."
+Example:
+> - **Role:** 3x Senior Platform Engineers — "migrate legacy services to K8s" (Careers Page)
+> - **Problem:** Infrastructure modernisation pain, legacy tech debt
+> - **Your angle:** They have budget allocated for exactly this
+> - **Talk track:** "I noticed you're scaling your platform team — we help companies \
+cut that migration timeline in half."
 
 If no careers data is available, infer hiring priorities from news and \
 company growth signals.
@@ -148,29 +185,49 @@ Then list 3-4 recommended target ROLES (e.g. VP Engineering, Head of \
 Security) with why THOSE roles matter for the seller's context.
 
 ## 4. Tech Stack Displacement Map
-For each technology found via BuiltWith:
-- Categorise it (infra, analytics, marketing, payments, security)
-- Flag direct COMPETITORS to the seller's product → include displacement angle
-- Flag INTEGRATION points → how the seller's tool connects
-- Flag GAPS where they have no solution → greenfield opportunity
+Table format:
+
+| Technology | Category | Status | Opportunity for Seller |
+|-----------|----------|--------|----------------------|
+
+Status = **Competitor** (displace) / **Integration** (connect) / **Gap** (greenfield). \
+One line per row explaining the angle.
 
 ## 5. Timing Signals
-Cross-reference ALL data sources to build a "Why Now" case:
-- Funding events + headcount growth = budget available
-- New leadership + hiring surge = re-evaluating tools
-- Product launches + tech stack changes = active investment
-Each signal must cite its source and end with a pitch angle.
+Only include signals from the **last 6 months** with dates. For each:
+- **Signal:** [what happened] — [date] (source)
+- **Why now:** one line connecting to seller's product
+- **Pitch angle:** what to say about it
 
 ## 6. Recent News & Signals
-Key news, funding rounds, product launches, leadership changes. \
-For each item, add a one-line note on how it creates a sales opening.
+Only the **3-5 most recent and relevant** items (with dates). Skip old/generic news. \
+For each:
+- **[Date] — [Headline]** (source)
+- **Sales opening:** one line on how to use this in outreach
 
-## 7. Recommended Battle Plan
-Deeply personalised to the seller's context:
-- 3 opening hooks (each must reference a SPECIFIC finding from above)
-- 3 pain points to probe (tied to hiring signals or tech stack gaps)
-- 3 likely objections + suggested responses
-- Recommended outreach sequence (who to contact first, what to say)"""
+## 7. Why You Might Lose This Deal
+Be brutally honest. For each risk:
+- **Risk:** [specific threat — e.g. "They already use Competitor X for this"]
+- **Evidence:** [what data supports this — cite source]
+- **Mitigation:** [one-line counter-strategy]
+
+Cover these angles: competitor lock-in, build-vs-buy, budget/timing, champion gap, \
+internal politics.
+
+## 8. Recommended Battle Plan
+Bullet format:
+- **3 opening hooks** — each cites a SPECIFIC dated finding from above
+- **3 pain points to probe** — tied to hiring signals or tech stack gaps
+- **3 likely objections + responses** — grounded in data, not generic
+- **Outreach sequence:** who to contact first → what channel → what to say
+
+## 9. Critical Deep Insights
+3-5 bullet points connecting the dots across ALL data sources. Each insight must:
+- Link 2+ sources (e.g. hiring + tech stack + news)
+- Be specific to the seller's product
+- End with a concrete action
+
+Format: **Insight:** [cross-referenced finding] → **Action:** [what to do about it]"""
 
 
 SYNTHESIS_USER_ELITE = """\
@@ -210,31 +267,32 @@ for **{company}**.
 {competitor_data}
 
 ---
-## OUTPUT — use exactly these sections
+## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
 
 ## 1. Company Snapshot
-Two paragraphs: what they do, HQ, size, funding stage, key metrics, \
-strategic priorities inferred from all sources.
+Bullet points only:
+- **What they do:** one line
+- **HQ / Size / Funding:** one line
+- **Key metrics:** revenue, headcount, growth rate
+- **Strategic focus:** what they care about right now (inferred from all sources)
+- **Recent momentum:** latest 2-3 events with dates
 
 ## 2. Hiring Pain Detector
-Deep analysis of careers page + hiring market signals. For each role \
-cluster being hired:
-- The EXACT job titles and key phrases from the postings
-- What business problem this hiring wave reveals
-- How the seller's product directly solves it
-- A ready-to-use talk track referencing the specific posting
+For each role cluster being hired:
+- **Role:** [exact job title from posting]
+- **Problem it reveals:** what business pain this signals
+- **Your angle:** how the seller's product directly solves this
+- **Talk track:** one ready-to-use sentence referencing the posting
 
-If they're scaling a team (e.g. "5 DevOps engineers"), flag this as a \
-budget signal — they're investing heavily in that area.
+If scaling a team (e.g. "5 DevOps engineers"), flag: \
+"**Budget signal** — they're actively investing here."
 
 ## 3. Company Initiatives & Projects
-Extract NAMED initiatives, projects, or strategic priorities from the \
-blog, press releases, and website. Examples: "Project Atlas", "AI-First \
-Strategy", "Cloud Migration Initiative". For each:
-- What it is and when it was announced
-- How the seller's product connects to it
-- A name-drop suggestion for the call (e.g. "I saw you're working on \
-  Project Atlas...")
+For each NAMED initiative/project found in blog/press/website:
+- **Initiative:** [name] — announced [date] (source)
+- **What it is:** one line
+- **Connection to seller:** how your product plugs into this
+- **Name-drop:** "I saw you're working on [X]..."
 
 ## 4. Decision-Maker Intelligence
 
@@ -267,43 +325,64 @@ Then list 3-4 recommended target ROLES with why they matter for this pitch \
 and suggest LinkedIn/email outreach strategies for those roles.
 
 ## 5. Tech Stack Displacement Map
-Categorised technology audit with competitive analysis:
+Table format:
 
-| Category | Current Tool | Status | Opportunity |
-|----------|-------------|--------|-------------|
-| Infra | AWS ECS | Incumbent | Migration target if selling K8s |
-| Analytics | Google Analytics | Gap | No product analytics tool |
+| Category | Current Tool | Status | Opportunity for Seller |
+|----------|-------------|--------|----------------------|
 
-For each entry relevant to the seller:
-- Displacement angle (if they use a competitor)
-- Integration story (if they use a complement)
-- Greenfield pitch (if they have a gap)
+Status = **Displace** / **Integrate** / **Gap**. One line per row. \
+Only include technologies relevant to the seller's product.
 
 ## 6. Competitive Landscape & Displacement
-From competitor intelligence:
-- Top 3-5 competitors and how the target company positions against them
-- If the target USES any competitor products (cross-ref with BuiltWith), \
-  provide specific displacement strategy
-- Customer reviews/sentiment about competitor products they might use
-- Comparison table: Competitor | Their Strength | Their Weakness | Your Angle
+Bullet format:
+- **Top 3-5 competitors** — one line each on how the target positions against them
+- **Competitor products IN USE** (cross-ref BuiltWith):
+  - **[Product]** → Displacement strategy: [specific angle]
+- **Comparison table:**
+
+| Competitor | Their Strength | Their Weakness | Your Angle |
+|-----------|---------------|----------------|------------|
 
 ## 7. Timing Signal Triangulation
-Cross-reference ALL sources to score urgency (1-10) and build the "Why Now" case:
-- Funding + headcount growth = budget (cite Apollo + News)
-- New leadership + hiring = tool re-evaluation window (cite Apollo + Careers)
-- Product launch + blog posts = active investment area (cite Blog + News)
-- Competitor mentions + review sentiment = switching consideration (cite Tavily)
+Only signals from the **last 6 months** with dates. Score overall urgency (1-10):
+- **[Signal]** — [date] (source + source) → **Pitch angle:** [one line]
 
-Synthesise into a "**Bottom Line: Why This Week**" paragraph.
+End with: **Bottom Line — Why This Week:** 2-3 bullet points synthesising \
+the strongest timing signals into a "contact them NOW" case.
 
-## 8. Recommended Battle Plan
-Deeply personalised and comprehensive:
-- 5 opening hooks (each cites a specific finding with source)
-- 5 pain points to probe (mapped to hiring signals, tech gaps, or initiatives)
-- 5 likely objections + responses (tied to their competitive landscape)
-- Strategic outreach sequence: who to email first, what subject line, \
-  what to reference in each message
-- Follow-up strategy: what to send after the first call"""
+## 8. Why You Might Lose This Deal
+Be brutally honest. For each risk:
+- **Risk:** [specific threat]
+- **Evidence:** [data that supports this — cite source]
+- **Mitigation:** [counter-strategy]
+
+Must cover:
+- **Competitor lock-in** — do they already use a competing product?
+- **Build vs buy** — could their team build this? (check eng headcount, hiring)
+- **Budget/timing** — signs of cost-cutting, layoffs, or freezes?
+- **Champion gap** — is there a clear path to a decision-maker?
+- **Internal politics** — any reorgs, leadership changes that could stall deals?
+
+## 9. Recommended Battle Plan
+Bullet format:
+- **5 opening hooks** — each cites a specific dated finding with source
+- **5 pain points to probe** — mapped to hiring signals, tech gaps, or initiatives
+- **5 likely objections + responses** — tied to competitive landscape data
+- **Outreach sequence:** who to email first → subject line → what to reference
+- **Follow-up strategy:** what to send after the first call
+
+## 10. Critical Deep Insights
+5-7 bullet points that connect the dots across ALL data sources. \
+Each insight MUST:
+- Link 2+ sources (e.g. hiring + tech stack + competitor intel + news)
+- Be directly tied to the seller's specific product
+- Answer: "What does this mean for MY deal?"
+- End with a concrete next step
+
+Format: **Insight:** [cross-referenced finding] → **Action:** [what to do]
+
+End with: **Deal Probability:** [High/Medium/Low] — one line justification \
+based on the evidence above."""
 
 
 TIER_TEMPLATES = {
