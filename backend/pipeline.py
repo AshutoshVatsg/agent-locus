@@ -1,9 +1,12 @@
 """
-Multi-stage agent pipeline with add-on and upgrade support.
+Multi-stage agent pipeline with autonomous enrichment.
 
 - run_pipeline():  Full report for a tier (base / pro / elite)
 - run_addon():     Single section add-on (appends to existing report)
 - run_upgrade():   Upgrade to higher tier (runs missing APIs + full re-synthesis)
+
+The agent autonomously evaluates data quality after the initial API sweep
+and spends additional USDC to fill gaps — the core "paygentic" behaviour.
 """
 
 import asyncio
@@ -32,6 +35,9 @@ COSTS = {
     "openai":        0.050,
 }
 
+# Maximum extra spend the agent is allowed per enrichment pass (USDC)
+ENRICHMENT_BUDGET = 0.15
+
 
 # ═══════════════════════════════════════════════════════════════════
 #  FULL PIPELINE (initial report for any tier)
@@ -53,8 +59,19 @@ async def run_pipeline(order_id: str, company: str, domain: str,
 
         data = await _gather_all(locus, apis, company, domain, url, cfg, costs)
 
+        # ── AUTONOMOUS ENRICHMENT ──
+        # Agent evaluates data quality and spends to fill gaps
+        enrichment_log = await _autonomous_enrich(
+            locus, data, apis, company, domain, url, context, costs,
+        )
+        if enrichment_log:
+            log.info("Agent enrichment for %s: %d actions, $%.4f spent",
+                     order_id, len(enrichment_log),
+                     sum(e["cost"] for e in enrichment_log))
+
         # persist raw data
         update_order(order_id,
+            enrichment_log=json.dumps(enrichment_log),
             company_domain=domain or "",
             company_data=json.dumps(data["company"], default=str),
             people_data=json.dumps(data["people_combined"], default=str),
@@ -68,7 +85,8 @@ async def run_pipeline(order_id: str, company: str, domain: str,
         )
 
         # synthesise
-        report = await _synthesise_full(locus, cfg, company, context, data, costs)
+        report = await _synthesise_full(locus, cfg, company, context, data, costs,
+                                        enrichment_log=enrichment_log)
 
         total_cost = round(sum(costs.values()), 4)
         update_order(order_id,
@@ -294,6 +312,245 @@ async def run_upgrade(order_id: str, target_tier: str):
 
 
 # ═══════════════════════════════════════════════════════════════════
+#  AUTONOMOUS ENRICHMENT ENGINE
+# ═══════════════════════════════════════════════════════════════════
+
+def _score_people(data) -> dict:
+    """Score quality of people data. Returns {score: 0-10, issues: [...]}."""
+    people = data.get("people_combined", {})
+    apollo = people.get("apollo", {})
+    hunter = people.get("hunter", {})
+    issues = []
+
+    # Check Apollo people
+    apollo_people = []
+    if isinstance(apollo, dict) and apollo.get("success"):
+        apollo_people = (apollo.get("data", {}).get("people", [])
+                         or apollo.get("data", {}).get("contacts", []))
+
+    titled_count = 0
+    for p in apollo_people:
+        name = (p.get("first_name", "") or "").strip()
+        title = (p.get("title", "") or "").strip()
+        if name and title:
+            titled_count += 1
+
+    if not apollo_people:
+        issues.append("No people found from Apollo")
+    elif titled_count == 0:
+        issues.append("People found but none have job titles")
+    elif titled_count < 3:
+        issues.append(f"Only {titled_count} people with titles (weak)")
+
+    # Check Hunter emails
+    hunter_emails = []
+    if isinstance(hunter, dict) and hunter.get("success"):
+        hunter_emails = hunter.get("data", {}).get("emails", [])
+
+    if not hunter_emails:
+        issues.append("No email contacts from Hunter")
+
+    score = 10
+    if not apollo_people:
+        score -= 5
+    elif titled_count < 3:
+        score -= 3
+    if not hunter_emails:
+        score -= 2
+
+    return {"score": max(0, score), "issues": issues, "titled_count": titled_count}
+
+
+def _score_company(data) -> dict:
+    """Score quality of company profile data."""
+    company = data.get("company", {})
+    issues = []
+    if not _call_succeeded(company):
+        issues.append("Company profile API failed")
+        return {"score": 0, "issues": issues}
+
+    org = company.get("data", {}).get("organization", {})
+    if not org.get("name"):
+        issues.append("No company name in profile")
+    if not org.get("short_description") and not org.get("description"):
+        issues.append("No company description")
+    if not org.get("estimated_num_employees"):
+        issues.append("No employee count")
+
+    score = 10 - len(issues) * 2
+    return {"score": max(0, score), "issues": issues}
+
+
+def _score_news(data) -> dict:
+    """Score quality of news data."""
+    news = data.get("news", {})
+    issues = []
+    if not _call_succeeded(news):
+        issues.append("News search failed")
+        return {"score": 0, "issues": issues}
+
+    results = news.get("data", {}).get("results", [])
+    if not results:
+        issues.append("No news results found")
+        return {"score": 2, "issues": issues}
+
+    if len(results) < 3:
+        issues.append(f"Only {len(results)} news items (sparse)")
+
+    score = min(10, len(results) * 2)
+    return {"score": score, "issues": issues}
+
+
+def _score_tech(data) -> dict:
+    """Score quality of tech stack data."""
+    tech = data.get("tech", {})
+    if not _call_succeeded(tech):
+        return {"score": 0, "issues": ["BuiltWith lookup failed"]}
+    return {"score": 8, "issues": []}
+
+
+async def _autonomous_enrich(locus, data, apis, company, domain, url, context, costs):
+    """Evaluate data quality and autonomously spend to fill gaps.
+
+    Returns a list of enrichment actions taken:
+    [{"action": "...", "reason": "...", "result": "...", "cost": 0.02}, ...]
+    """
+    enrichment_log = []
+    budget_remaining = ENRICHMENT_BUDGET
+
+    # Score every data category
+    scores = {
+        "people":  _score_people(data),
+        "company": _score_company(data),
+        "news":    _score_news(data),
+        "tech":    _score_tech(data),
+    }
+
+    log.info("Data quality scores: %s",
+             {k: v["score"] for k, v in scores.items()})
+
+    # ── DECISION 1: People data weak → try Hunter if not already called ──
+    people_score = scores["people"]
+    if people_score["score"] < 6 and "hunter" not in apis and domain:
+        cost = COSTS["hunter"]
+        if cost <= budget_remaining:
+            log.info("Agent decision: people data weak (%s), calling Hunter",
+                     "; ".join(people_score["issues"]))
+            result = await _safe(locus.hunter_domain_search(domain))
+            if _call_succeeded(result):
+                data["people_combined"]["hunter"] = result
+                costs["enrich_hunter"] = cost
+                budget_remaining -= cost
+                emails = result.get("data", {}).get("emails", [])
+                enrichment_log.append({
+                    "action": "Called Hunter email search",
+                    "reason": "; ".join(people_score["issues"]),
+                    "result": f"Found {len(emails)} email contacts",
+                    "cost": cost,
+                })
+            else:
+                enrichment_log.append({
+                    "action": "Called Hunter email search",
+                    "reason": "; ".join(people_score["issues"]),
+                    "result": "API call failed — no additional data",
+                    "cost": 0,
+                })
+
+    # ── DECISION 2: People still weak → try Apollo people if not called ──
+    if people_score["score"] < 5 and "apollo_people" not in apis and domain:
+        cost = COSTS["apollo_people"]
+        if cost <= budget_remaining:
+            log.info("Agent decision: people still weak, calling Apollo People")
+            result = await _safe(locus.apollo_people_search(domain))
+            if _call_succeeded(result):
+                data["people_combined"]["apollo"] = result
+                costs["enrich_apollo_people"] = cost
+                budget_remaining -= cost
+                people = (result.get("data", {}).get("people", [])
+                          or result.get("data", {}).get("contacts", []))
+                enrichment_log.append({
+                    "action": "Called Apollo People search",
+                    "reason": "People data critically weak after initial sweep",
+                    "result": f"Found {len(people)} people profiles",
+                    "cost": cost,
+                })
+
+    # ── DECISION 3: News data empty → broaden search query ──
+    news_score = scores["news"]
+    if news_score["score"] < 4:
+        cost = COSTS["tavily"]
+        if cost <= budget_remaining:
+            log.info("Agent decision: news data weak, running broader search")
+            result = await _safe(locus.tavily_search(
+                f'"{company}" announcement OR partnership OR expansion 2025 2026',
+                max_results=5, topic="news",
+            ))
+            if _call_succeeded(result):
+                new_results = result.get("data", {}).get("results", [])
+                if new_results:
+                    # Merge with existing news
+                    existing = data["news"].get("data", {}).get("results", []) if _call_succeeded(data["news"]) else []
+                    seen_urls = {r.get("url") for r in existing}
+                    added = [r for r in new_results if r.get("url") not in seen_urls]
+                    if added:
+                        if not _call_succeeded(data["news"]):
+                            data["news"] = result
+                        else:
+                            data["news"]["data"]["results"].extend(added)
+                        costs["enrich_tavily_news"] = cost
+                        budget_remaining -= cost
+                        enrichment_log.append({
+                            "action": "Broadened news search",
+                            "reason": "; ".join(news_score["issues"]),
+                            "result": f"Found {len(added)} additional news items",
+                            "cost": cost,
+                        })
+
+    # ── DECISION 4: No tech stack → try BuiltWith if not called ──
+    tech_score = scores["tech"]
+    if tech_score["score"] < 3 and "builtwith" not in apis and domain:
+        cost = COSTS["builtwith"]
+        if cost <= budget_remaining:
+            log.info("Agent decision: no tech data, calling BuiltWith")
+            result = await _safe(locus.builtwith_lookup(domain))
+            if _call_succeeded(result):
+                data["tech"] = result
+                costs["enrich_builtwith"] = cost
+                budget_remaining -= cost
+                enrichment_log.append({
+                    "action": "Called BuiltWith tech lookup",
+                    "reason": "; ".join(tech_score["issues"]),
+                    "result": "Tech stack data acquired",
+                    "cost": cost,
+                })
+
+    # ── DECISION 5: Company profile weak → try website scrape for context ──
+    company_score = scores["company"]
+    if company_score["score"] < 5 and "firecrawl_home" not in apis and url:
+        cost = COSTS["firecrawl"]
+        if cost <= budget_remaining:
+            log.info("Agent decision: company profile weak, scraping homepage")
+            result = await _safe(locus.firecrawl_scrape(url))
+            if _call_succeeded(result):
+                data["website"] = result
+                costs["enrich_firecrawl_home"] = cost
+                budget_remaining -= cost
+                enrichment_log.append({
+                    "action": "Scraped company homepage",
+                    "reason": "; ".join(company_score["issues"]),
+                    "result": "Homepage content acquired for context",
+                    "cost": cost,
+                })
+
+    if enrichment_log:
+        total_enrichment = sum(e["cost"] for e in enrichment_log)
+        log.info("Enrichment complete: %d actions, $%.4f spent (budget was $%.2f)",
+                 len(enrichment_log), total_enrichment, ENRICHMENT_BUDGET)
+
+    return enrichment_log
+
+
+# ═══════════════════════════════════════════════════════════════════
 #  SHARED HELPERS
 # ═══════════════════════════════════════════════════════════════════
 
@@ -381,7 +638,8 @@ async def _gather_all(locus, apis, company, domain, url, cfg, costs):
     }
 
 
-async def _synthesise_full(locus, cfg, company, context, data, costs):
+async def _synthesise_full(locus, cfg, company, context, data, costs,
+                           enrichment_log=None):
     """Run the synthesis LLM and return the markdown report."""
     user_prompt = build_synthesis_prompt(
         company=company, context=context,
@@ -395,6 +653,7 @@ async def _synthesise_full(locus, cfg, company, context, data, costs):
         hiring_data=data["hiring"],
         competitor_data=data["competitor"],
         tier=cfg.get("tier_key") or _tier_key(cfg),
+        enrichment_log=enrichment_log,
     )
     synthesis = await locus.openai_chat(
         system=SYNTHESIS_SYSTEM,

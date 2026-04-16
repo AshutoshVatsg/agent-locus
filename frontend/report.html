@@ -118,6 +118,17 @@
       </div>
     </div>
 
+    <!-- Agent enrichment log -->
+    <div id="enrichmentCard" class="hidden mb-4 bg-gradient-to-r from-amber-950/30 to-slate-900 border border-amber-700/40 rounded-xl p-4">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="text-amber-400 text-lg">&#x1F916;</span>
+        <span class="text-sm font-semibold text-amber-300">Agent Autonomous Enrichment</span>
+        <span id="enrichmentCostBadge" class="ml-auto text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 rounded-full px-2.5 py-0.5"></span>
+      </div>
+      <div class="text-xs text-slate-400 mb-3">The agent evaluated data quality and autonomously spent USDC to fill gaps:</div>
+      <div id="enrichmentActions" class="space-y-2"></div>
+    </div>
+
     <!-- Report sections (rendered from markdown) -->
     <div id="reportSections" class="hidden space-y-4"></div>
 
@@ -294,6 +305,7 @@
           : 'font-semibold text-emerald-400';
         document.getElementById('stages').classList.add('hidden');
         renderSections(o.report || '');
+        renderEnrichmentLog(o.enrichment_log);
 
       } else if (o.status === 'ADDON_FAILED' || o.status === 'UPGRADE_FAILED') {
         clearTimeout(pollTimer);
@@ -342,6 +354,35 @@
           }
         }
       }
+    }
+
+    function renderEnrichmentLog(logJson) {
+      const card = document.getElementById('enrichmentCard');
+      let actions = [];
+      try { actions = JSON.parse(logJson || '[]'); } catch (_) {}
+      if (!actions.length) { card.classList.add('hidden'); return; }
+
+      card.classList.remove('hidden');
+      const totalCost = actions.reduce((s, a) => s + (a.cost || 0), 0);
+      document.getElementById('enrichmentCostBadge').textContent =
+        `${actions.length} action${actions.length > 1 ? 's' : ''} — $${totalCost.toFixed(3)} spent`;
+
+      const container = document.getElementById('enrichmentActions');
+      container.innerHTML = actions.map(a => `
+        <div class="flex items-start gap-3 bg-slate-800/60 rounded-lg p-3">
+          <div class="flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs
+            ${a.cost > 0 ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">
+            ${a.cost > 0 ? '&#10003;' : '&#10007;'}
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="text-sm font-medium text-white">${a.action}
+              <span class="text-xs text-amber-400 ml-1">$${(a.cost || 0).toFixed(3)}</span>
+            </div>
+            <div class="text-xs text-slate-400 mt-0.5"><span class="text-slate-500">Why:</span> ${a.reason}</div>
+            <div class="text-xs text-emerald-400/80 mt-0.5"><span class="text-slate-500">Result:</span> ${a.result}</div>
+          </div>
+        </div>
+      `).join('');
     }
 
     function renderSections(markdown) {

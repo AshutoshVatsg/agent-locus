@@ -54,6 +54,7 @@ def init_db():
         ("competitor_data",     "TEXT DEFAULT '{}'"),
         ("addons_purchased",    "TEXT DEFAULT '[]'"),
         ("pending_action",      "TEXT DEFAULT ''"),
+        ("enrichment_log",      "TEXT DEFAULT '[]'"),
     ]:
         try:
             c.execute(f"ALTER TABLE orders ADD COLUMN {col} {definition}")

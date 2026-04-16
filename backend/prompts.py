@@ -52,6 +52,8 @@ Create a sales pitch-prep briefing for **{company}**.
 ### Recent News & Signals (Tavily)
 {news_data}
 
+{enrichment_block}
+
 ---
 ## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
 
@@ -129,6 +131,8 @@ Create a cross-referenced sales briefing for **{company}**.
 
 ### Hiring Signals (Tavily)
 {hiring_data}
+
+{enrichment_block}
 
 ---
 ## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
@@ -265,6 +269,8 @@ for **{company}**.
 
 ### Competitor Intelligence (Tavily)
 {competitor_data}
+
+{enrichment_block}
 
 ---
 ## OUTPUT — use exactly these sections. Use bullet points, NOT paragraphs.
@@ -526,7 +532,7 @@ Tech Stack: {tech_data_summary}
 def build_synthesis_prompt(company, context, company_data, people_data,
                            tech_data, website_data, careers_data, blog_data,
                            news_data, hiring_data, competitor_data,
-                           tier="base"):
+                           tier="base", enrichment_log=None):
     ctx = (
         f"**Seller's context:** {context}\n"
         "Tailor EVERY section to this seller's specific situation. "
@@ -534,11 +540,24 @@ def build_synthesis_prompt(company, context, company_data, people_data,
         "close THIS deal."
     ) if context else ""
 
+    enrichment_block = ""
+    if enrichment_log:
+        lines = ["### Agent Enrichment Actions",
+                 "The agent autonomously spent USDC to improve this report:"]
+        for e in enrichment_log:
+            lines.append(f"- **{e['action']}** (${e['cost']:.3f}) — "
+                         f"Reason: {e['reason']} → Result: {e['result']}")
+        lines.append("")
+        lines.append("Reference these enrichment actions in your report where "
+                     "the enriched data improved a section.")
+        enrichment_block = "\n".join(lines)
+
     template = TIER_TEMPLATES.get(tier, SYNTHESIS_USER_BASE)
 
     return template.format(
         company=company,
         context_block=ctx,
+        enrichment_block=enrichment_block,
         company_data=_trunc(str(company_data), 3000),
         people_data=_trunc(str(people_data), 3000),
         tech_data=_trunc(str(tech_data), 2500),
