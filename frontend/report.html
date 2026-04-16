@@ -220,6 +220,8 @@
           pollTimer = setTimeout(loadOrder, 2500);
         } else if (orderData.status === 'COMPLETED') {
           loadOptions();
+        } else if (orderData.status === 'ADDON_FAILED' || orderData.status === 'UPGRADE_FAILED') {
+          loadOptions();
         }
       } catch (e) {
         showError(e.message);
@@ -292,6 +294,21 @@
           : 'font-semibold text-emerald-400';
         document.getElementById('stages').classList.add('hidden');
         renderSections(o.report || '');
+
+      } else if (o.status === 'ADDON_FAILED' || o.status === 'UPGRADE_FAILED') {
+        clearTimeout(pollTimer);
+        document.getElementById('statusBar').classList.add('hidden');
+        document.getElementById('metaCard').classList.remove('hidden');
+        document.getElementById('metaStatus').textContent = o.status === 'ADDON_FAILED' ? 'ADD-ON FAILED' : 'UPGRADE FAILED';
+        document.getElementById('metaStatus').className = 'font-semibold text-red-400';
+        document.getElementById('stages').classList.add('hidden');
+        renderSections(o.report || '');
+
+        // show dismissable error banner
+        const errMsg = o.error || 'Something went wrong. You can retry the purchase below.';
+        const banner = document.getElementById('errorBlock');
+        banner.classList.remove('hidden');
+        document.getElementById('errorText').textContent = errMsg + ' Your existing report is still available. You can retry the purchase below.';
 
       } else if (o.status === 'FAILED') {
         clearTimeout(pollTimer);

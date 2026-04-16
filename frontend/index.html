@@ -252,12 +252,12 @@
           `width=${w},height=${h},left=${left},top=${top},toolbar=no,menubar=no,scrollbars=yes,resizable=yes`
         );
 
-        // Poll for popup close → redirect to report
-        const oid = data.order_id;
+        // Poll for popup close → redirect to my-orders
+        const email = document.getElementById('clientEmail').value.trim();
         const poll = setInterval(() => {
           if (popup && popup.closed) {
             clearInterval(poll);
-            window.location.href = `/report/${oid}`;
+            window.location.href = `/my-orders?email=${encodeURIComponent(email)}`;
           }
         }, 500);
 

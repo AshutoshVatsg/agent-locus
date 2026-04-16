@@ -185,7 +185,8 @@ async def run_addon(order_id: str, addon_key: str):
 
     except Exception as exc:
         log.exception("Add-on '%s' failed for %s", addon_key, order_id)
-        update_order(order_id, status="COMPLETED", pending_action="", error=str(exc))
+        update_order(order_id, status="ADDON_FAILED", pending_action="",
+                     error=f"Add-on '{addon_key}' failed: {exc}")
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -288,7 +289,8 @@ async def run_upgrade(order_id: str, target_tier: str):
 
     except Exception as exc:
         log.exception("Upgrade to %s failed for %s", target_tier, order_id)
-        update_order(order_id, status="COMPLETED", pending_action="", error=str(exc))
+        update_order(order_id, status="UPGRADE_FAILED", pending_action="",
+                     error=f"Upgrade to '{target_tier}' failed: {exc}")
 
 
 # ═══════════════════════════════════════════════════════════════════

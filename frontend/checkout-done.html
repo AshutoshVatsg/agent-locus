@@ -14,19 +14,24 @@
   </div>
   <script>
     const oid = window.location.pathname.split('/').pop();
-    const reportUrl = '/report/' + oid;
 
     async function confirmAndRedirect() {
+      // Confirm payment with backend
+      let email = '';
       try {
-        await fetch(`/api/orders/${oid}/confirm-payment`, { method: 'POST' });
+        const res = await fetch(`/api/orders/${oid}/confirm-payment`, { method: 'POST' });
+        const order = await res.json();
+        email = order.client_email || '';
       } catch (_) {}
+
+      const myOrdersUrl = '/my-orders' + (email ? '?email=' + encodeURIComponent(email) : '');
 
       // If we're in a popup, close it — parent is polling and will redirect
       if (window.opener) {
-        window.opener.location.href = reportUrl;
+        window.opener.location.href = myOrdersUrl;
         window.close();
       } else {
-        window.location.href = reportUrl;
+        window.location.href = myOrdersUrl;
       }
     }
 

@@ -211,7 +211,7 @@ async def api_purchase_addon(oid: str, body: AddonIn):
     order = get_order(oid)
     if not order:
         raise HTTPException(404, "Order not found")
-    if order["status"] != "COMPLETED":
+    if order["status"] not in ("COMPLETED", "ADDON_FAILED"):
         raise HTTPException(400, "Report must be completed before adding sections")
 
     addon_key = body.addon_key
@@ -259,7 +259,7 @@ async def api_purchase_upgrade(oid: str, body: UpgradeIn):
     order = get_order(oid)
     if not order:
         raise HTTPException(404, "Order not found")
-    if order["status"] != "COMPLETED":
+    if order["status"] not in ("COMPLETED", "UPGRADE_FAILED"):
         raise HTTPException(400, "Report must be completed before upgrading")
 
     current_tier = order.get("tier", "base")
@@ -313,7 +313,7 @@ async def api_send_email(oid: str):
     order = get_order(oid)
     if not order:
         raise HTTPException(404, "Order not found")
-    if order["status"] != "COMPLETED":
+    if order["status"] not in ("COMPLETED", "ADDON_FAILED", "UPGRADE_FAILED"):
         raise HTTPException(400, "Report not ready yet")
     if not AGENTMAIL_INBOX_ID:
         raise HTTPException(503, "Email delivery not configured")

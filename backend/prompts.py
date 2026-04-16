@@ -16,6 +16,9 @@ Rules:
 - If a data source returned an error or empty result, note it briefly and work \
   with what you have.
 - NEVER fabricate data. Only use what is provided below.
+- For people/decision-maker data: REJECT entries missing full names or clear \
+  job titles. Do NOT include someone just because they have an email. \
+  Quality over quantity — 3 validated decision-makers beat 10 unknowns.
 - When referencing where you found something, use parenthetical citations like \
   (Apollo), (BuiltWith), (Careers Page), (News), (Hiring Signals)."""
 
@@ -119,10 +122,30 @@ If no careers data is available, infer hiring priorities from news and \
 company growth signals.
 
 ## 3. Decision-Maker Map
-Markdown table — Name | Title | Tenure | Pitch Relevance.
-For each person, explain WHY they matter for THIS specific pitch. \
-Cross-reference their role with the hiring signals and tech stack. \
-Flag anyone who joined recently (< 6 months) — new leaders re-evaluate tooling.
+
+STEP 1 — FILTER: From the raw people data, ONLY keep people who have:
+- A full name (first AND last)
+- A clear senior job title (CEO, CTO, VP, Head, Director, Chief, SVP, \
+  EVP, President, Founder, Managing Director, or similar)
+- OR are clearly part of a team relevant to the seller's context \
+  (e.g. engineering, security, product, sales leadership)
+REJECT anyone with: missing name, missing/vague title, generic entries, \
+or low-confidence data.
+
+STEP 2 — VALIDATE & RANK: Given the seller's context, determine which \
+roles are MOST relevant for this pitch and rank by decision-making authority.
+
+STEP 3 — OUTPUT: Markdown table — Name | Title | Tenure | Pitch Relevance.
+Select the top 3-5 VALIDATED people. For each person:
+- Why they matter for THIS specific pitch (be specific, not generic)
+- Cross-reference their role with hiring signals and tech stack
+- Flag anyone who joined recently (< 6 months) — new leaders re-evaluate tooling
+- One personalised opener line for this person
+
+STEP 4 — FALLBACK: If NO strong candidates exist in the data, output:
+"⚠️ No high-confidence decision-makers identified from available data."
+Then list 3-4 recommended target ROLES (e.g. VP Engineering, Head of \
+Security) with why THOSE roles matter for the seller's context.
 
 ## 4. Tech Stack Displacement Map
 For each technology found via BuiltWith:
@@ -214,13 +237,34 @@ Strategy", "Cloud Migration Initiative". For each:
   Project Atlas...")
 
 ## 4. Decision-Maker Intelligence
-Markdown table — Name | Title | Tenure | Email | Pitch Relevance.
-For EACH person (8-10):
-- Why they matter for THIS pitch
+
+STEP 1 — FILTER: From the raw people data, ONLY keep people who have:
+- A full name (first AND last)
+- A clear senior job title (CEO, CTO, VP, Head, Director, Chief, SVP, \
+  EVP, President, Founder, Managing Director, or team lead in a \
+  relevant department)
+REJECT anyone with: missing name, missing/vague title, generic entries, \
+low-confidence emails, or no clear relevance to the seller's context. \
+Do NOT guess roles or fabricate profiles.
+
+STEP 2 — VALIDATE & RANK: Given the seller's context, determine which \
+people are MOST relevant. Prioritise decision-makers with budget \
+authority in the relevant area.
+
+STEP 3 — OUTPUT: Markdown table — Name | Title | Tenure | Email | Pitch Relevance.
+Select the top 5-8 VALIDATED people. For each:
+- Why they matter for THIS pitch (specific, not generic)
 - If tenure < 6 months: flag as "new leader — likely re-evaluating tools"
 - Cross-reference with hiring signals (e.g. "Owns the platform team \
   that's hiring 5 engineers — has budget authority")
-- Suggested personalised opener for this specific person
+- One personalised opener for this specific person
+
+STEP 4 — FALLBACK: If the raw data lacks strong candidates (missing \
+titles, names only, low confidence), DO NOT pad the table with weak entries. \
+Instead output:
+"⚠️ No high-confidence decision-makers identified from available data."
+Then list 3-4 recommended target ROLES with why they matter for this pitch \
+and suggest LinkedIn/email outreach strategies for those roles.
 
 ## 5. Tech Stack Displacement Map
 Categorised technology audit with competitive analysis:
@@ -329,11 +373,32 @@ Tech Stack: {tech_data_summary}
 ---
 ## Decision-Maker Intelligence
 
-Markdown table — Name | Title | Tenure | Email | Pitch Relevance.
-For each person:
-- Why they matter for THIS specific pitch
+IMPORTANT RULES:
+- Do NOT guess names or roles. Do NOT include incomplete profiles.
+- ONLY include people who have a full name AND a clear job title.
+- REJECT entries with missing names, missing titles, generic roles, \
+  or low-confidence emails.
+
+STEP 1 — FILTER: From the raw data, ONLY keep people with:
+- Full name (first AND last)
+- Senior title: CEO, CTO, VP, Head, Director, Chief, SVP, EVP, \
+  President, Founder, Managing Director, or team lead in a relevant dept
+- Clear relevance to the seller's context
+
+STEP 2 — ROLE MAPPING: Given the seller's context, determine which \
+roles are MOST relevant for this pitch and why they would care.
+
+STEP 3 — OUTPUT: Markdown table — Name | Title | Tenure | Email | Pitch Relevance.
+Select top 3-5 VALIDATED people. For each:
+- Why they matter for THIS specific pitch (specific, not generic)
 - If tenure < 6 months: "new leader — likely re-evaluating tools"
-- Suggested personalised opener for this person""",
+- One personalised opener for this person
+
+STEP 4 — FALLBACK: If NO strong candidates exist in the data, output:
+"⚠️ No high-confidence decision-makers identified from available data."
+Then list 3-4 recommended target ROLES (e.g. VP Engineering, Head of \
+Security) with why those roles matter for the seller's context and \
+how to find them (LinkedIn search tips).""",
 
     "initiatives": """\
 Generate a single section for **{company}**.
