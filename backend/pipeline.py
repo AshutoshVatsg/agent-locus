@@ -36,7 +36,11 @@ COSTS = {
 }
 
 # Maximum extra spend the agent is allowed per enrichment pass (USDC)
-ENRICHMENT_BUDGET = 0.15
+ENRICHMENT_BUDGET = {
+    "base":  0.10,   # $0.75 tier — lean enrichment
+    "pro":   0.20,   # $1.75 tier — moderate enrichment
+    "elite": 0.40,   # $3.25 tier — aggressive enrichment
+}
 
 
 # ═══════════════════════════════════════════════════════════════════
@@ -62,7 +66,7 @@ async def run_pipeline(order_id: str, company: str, domain: str,
         # ── AUTONOMOUS ENRICHMENT ──
         # Agent evaluates data quality and spends to fill gaps
         enrichment_log = await _autonomous_enrich(
-            locus, data, apis, company, domain, url, context, costs,
+            locus, data, apis, company, domain, url, context, costs, tier,
         )
         if enrichment_log:
             log.info("Agent enrichment for %s: %d actions, $%.4f spent",
@@ -409,14 +413,17 @@ def _score_tech(data) -> dict:
     return {"score": 8, "issues": []}
 
 
-async def _autonomous_enrich(locus, data, apis, company, domain, url, context, costs):
+async def _autonomous_enrich(locus, data, apis, company, domain, url, context, costs,
+                             tier="base"):
     """Evaluate data quality and autonomously spend to fill gaps.
+
+    Higher tiers get bigger enrichment budgets — Elite agent tries harder.
 
     Returns a list of enrichment actions taken:
     [{"action": "...", "reason": "...", "result": "...", "cost": 0.02}, ...]
     """
     enrichment_log = []
-    budget_remaining = ENRICHMENT_BUDGET
+    budget_remaining = ENRICHMENT_BUDGET.get(tier, 0.10)
 
     # Score every data category
     scores = {
@@ -542,10 +549,58 @@ async def _autonomous_enrich(locus, data, apis, company, domain, url, context, c
                     "cost": cost,
                 })
 
+    # ── ELITE-ONLY: Extra enrichment passes ──
+    if tier == "elite":
+        # Re-score people after earlier enrichment attempts
+        people_rescore = _score_people(data)
+        if people_rescore["score"] < 8 and context and budget_remaining >= COSTS["tavily"]:
+            cost = COSTS["tavily"]
+            log.info("Agent decision [elite]: targeted people search using seller context")
+            result = await _safe(locus.tavily_search(
+                f'"{company}" {context[:80]} leadership team executive',
+                max_results=5,
+            ))
+            if _call_succeeded(result):
+                results_found = result.get("data", {}).get("results", [])
+                if results_found:
+                    costs["enrich_tavily_leaders"] = cost
+                    budget_remaining -= cost
+                    # Store as supplementary people intel
+                    data["people_combined"]["tavily_leaders"] = result
+                    enrichment_log.append({
+                        "action": "Targeted leadership search (Elite)",
+                        "reason": f"People still weak (score {people_rescore['score']}/10) — "
+                                  "searching for leaders relevant to seller context",
+                        "result": f"Found {len(results_found)} leadership references",
+                        "cost": cost,
+                    })
+
+        # Elite: deeper competitive intel if not already strong
+        if "tavily_competitors" not in apis and budget_remaining >= COSTS["tavily"]:
+            cost = COSTS["tavily"]
+            log.info("Agent decision [elite]: adding competitive intelligence")
+            result = await _safe(locus.tavily_search(
+                f'"{company}" vs competitors alternatives review comparison',
+                max_results=5,
+            ))
+            if _call_succeeded(result):
+                comp_results = result.get("data", {}).get("results", [])
+                if comp_results:
+                    data["competitor"] = result
+                    costs["enrich_tavily_competitors"] = cost
+                    budget_remaining -= cost
+                    enrichment_log.append({
+                        "action": "Added competitive intelligence (Elite)",
+                        "reason": "Competitor data not in base tier — Elite agent adds it",
+                        "result": f"Found {len(comp_results)} competitor insights",
+                        "cost": cost,
+                    })
+
     if enrichment_log:
         total_enrichment = sum(e["cost"] for e in enrichment_log)
+        budget_limit = ENRICHMENT_BUDGET.get(tier, 0.10)
         log.info("Enrichment complete: %d actions, $%.4f spent (budget was $%.2f)",
-                 len(enrichment_log), total_enrichment, ENRICHMENT_BUDGET)
+                 len(enrichment_log), total_enrichment, budget_limit)
 
     return enrichment_log
 
