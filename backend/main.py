@@ -18,11 +18,12 @@ import markdown as md_lib
 
 from config import (
     SERVER_URL, TIER_CONFIG, TIER_ORDER, AGENTMAIL_INBOX_ID, ADMIN_KEY,
-    ADDONS, get_upgrade_price, get_available_addons, get_available_upgrades,
+    ADDONS, DEMO_MODE, get_upgrade_price, get_available_addons, get_available_upgrades,
 )
 from database import init_db, create_order, get_order, get_all_orders, get_orders_by_email, get_dashboard_stats, update_order
 from locus_client import LocusClient
-from pipeline import run_pipeline, run_addon, run_upgrade
+from pipeline import run_pipeline, run_addon, run_upgrade, run_demo_pipeline, run_demo_addon, run_demo_upgrade
+from demo_data import get_demo_presets
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(levelname)s %(message)s")
 log = logging.getLogger("briefbot")
@@ -45,10 +46,21 @@ def _require_admin(request: Request):
         raise HTTPException(403, "Unauthorized")
 
 
+def _decorate_order(order: dict | None):
+    if not order:
+        return order
+    enriched = dict(order)
+    enriched["demo_mode"] = DEMO_MODE
+    return enriched
+
+
 async def _refresh_order_state(oid: str, bg: BackgroundTasks):
     order = get_order(oid)
     if not order:
         raise HTTPException(404, "Order not found")
+
+    if DEMO_MODE:
+        return _decorate_order(order)
 
     locus = LocusClient()
 
@@ -90,7 +102,7 @@ async def _refresh_order_state(oid: str, bg: BackgroundTasks):
         except Exception as e:
             log.warning("Pending action check failed for %s: %s", oid, e)
 
-    return get_order(oid) or order
+    return _decorate_order(get_order(oid) or order)
 
 
 @app.on_event("startup")
@@ -138,6 +150,21 @@ async def api_create_order(body: OrderIn):
         price,
         tier,
     )
+
+    if DEMO_MODE:
+        now = datetime.now(timezone.utc).isoformat()
+        update_order(oid, status="PROCESSING", paid_at=now)
+        await run_demo_pipeline(
+            oid, body.company_name, body.company_domain.strip().lower(), body.context, tier,
+        )
+        return {
+            "order_id": oid,
+            "price": price,
+            "tier": tier,
+            "checkout_url": None,
+            "demo_mode": True,
+        }
+
     locus = LocusClient()
     tier_label = TIER_CONFIG[tier]["label"]
     session = await locus.create_checkout_session(
@@ -155,7 +182,7 @@ async def api_create_order(body: OrderIn):
     checkout_session_id = session["data"]["id"]
     update_order(oid, checkout_session_id=checkout_session_id)
 
-    return {"order_id": oid, "price": price, "tier": tier, "checkout_url": checkout_url}
+    return {"order_id": oid, "price": price, "tier": tier, "checkout_url": checkout_url, "demo_mode": False}
 
 
 @app.get("/api/orders/{oid}")
@@ -202,6 +229,7 @@ async def api_get_options(oid: str):
         "addons": get_available_addons(current_tier, purchased),
         "upgrades": get_available_upgrades(current_tier),
         "purchased_addons": purchased,
+        "demo_mode": DEMO_MODE,
     }
 
 
@@ -223,6 +251,17 @@ async def api_purchase_addon(oid: str, body: AddonIn):
         raise HTTPException(400, "Add-on already purchased")
 
     addon = ADDONS[addon_key]
+
+    if DEMO_MODE:
+        update_order(oid, status="PROCESSING")
+        await run_demo_addon(oid, addon_key)
+        return {
+            "addon_key": addon_key,
+            "price": addon["price"],
+            "checkout_url": None,
+            "demo_mode": True,
+        }
+
     locus = LocusClient()
 
     session = await locus.create_checkout_session(
@@ -250,6 +289,7 @@ async def api_purchase_addon(oid: str, body: AddonIn):
         "addon_key": addon_key,
         "price": addon["price"],
         "checkout_url": checkout_url,
+        "demo_mode": False,
     }
 
 
@@ -273,6 +313,17 @@ async def api_purchase_upgrade(oid: str, body: UpgradeIn):
     price = get_upgrade_price(current_tier, target_tier)
     if price <= 0:
         raise HTTPException(400, "No upgrade needed")
+
+    if DEMO_MODE:
+        update_order(oid, status="PROCESSING")
+        await run_demo_upgrade(oid, target_tier)
+        return {
+            "target_tier": target_tier,
+            "price": price,
+            "full_price": TIER_CONFIG[target_tier]["price"],
+            "checkout_url": None,
+            "demo_mode": True,
+        }
 
     locus = LocusClient()
     target_label = TIER_CONFIG[target_tier]["label"]
@@ -302,6 +353,7 @@ async def api_purchase_upgrade(oid: str, body: UpgradeIn):
         "price": price,
         "full_price": TIER_CONFIG[target_tier]["price"],
         "checkout_url": checkout_url,
+        "demo_mode": False,
     }
 
 
@@ -310,6 +362,8 @@ async def api_purchase_upgrade(oid: str, body: UpgradeIn):
 
 @app.post("/api/orders/{oid}/send-email")
 async def api_send_email(oid: str):
+    if DEMO_MODE:
+        raise HTTPException(503, "Email delivery is disabled in demo mode")
     order = get_order(oid)
     if not order:
         raise HTTPException(404, "Order not found")
@@ -362,7 +416,7 @@ async def api_my_orders(email: str = ""):
     email = email.strip()
     if not email:
         raise HTTPException(400, "Email is required")
-    return get_orders_by_email(email)
+    return [_decorate_order(order) for order in get_orders_by_email(email)]
 
 
 # ────────────────────────── Dashboard ──────────────────────────
@@ -371,30 +425,35 @@ async def api_my_orders(email: str = ""):
 @app.get("/api/orders")
 async def api_list_orders(request: Request):
     _require_admin(request)
-    return get_all_orders()
+    return [_decorate_order(order) for order in get_all_orders()]
 
 
 @app.get("/api/dashboard")
 async def api_dashboard(request: Request):
     _require_admin(request)
     stats = get_dashboard_stats()
-    try:
-        locus = LocusClient()
-        bal = await locus.get_balance()
-        stats["wallet_balance"] = bal.get("data", {}).get("usdc_balance", "0.00")
-        stats["wallet_address"] = bal.get("data", {}).get("wallet_address", "")
-    except Exception:
-        stats["wallet_balance"] = "N/A"
+    if not DEMO_MODE:
+        try:
+            locus = LocusClient()
+            bal = await locus.get_balance()
+            stats["wallet_balance"] = bal.get("data", {}).get("usdc_balance", "0.00")
+            stats["wallet_address"] = bal.get("data", {}).get("wallet_address", "")
+        except Exception:
+            stats["wallet_balance"] = "N/A"
+            stats["wallet_address"] = ""
+    else:
+        stats["wallet_balance"] = "Demo"
         stats["wallet_address"] = ""
     stats["report_price"] = TIER_CONFIG["base"]["price"]
     stats["tiers"] = TIER_CONFIG
+    stats["demo_mode"] = DEMO_MODE
     return stats
 
 
 @app.get("/api/tiers")
 async def api_tiers():
     """Public endpoint — just tier pricing for the storefront."""
-    return {"tiers": TIER_CONFIG}
+    return {"tiers": TIER_CONFIG, "demo_mode": DEMO_MODE, "demo_presets": get_demo_presets()}
 
 
 # ────────────────────────── Frontend ──────────────────────────

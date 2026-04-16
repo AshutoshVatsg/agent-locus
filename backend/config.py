@@ -145,3 +145,4 @@ DATABASE_PATH = os.path.join(os.path.dirname(__file__), "briefbot.db")
 AGENTMAIL_INBOX_ID = os.getenv("AGENTMAIL_INBOX_ID", "")
 SERVER_URL = os.getenv("SERVER_URL", "http://localhost:8000")
 ADMIN_KEY = os.getenv("ADMIN_KEY", "briefbot-owner-2026")
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"

@@ -35,6 +35,10 @@
   <!-- Dashboard (hidden until authed) -->
   <main id="dashboardMain" class="hidden flex-1 max-w-6xl mx-auto w-full px-4 py-8">
 
+    <div id="demoBanner" class="hidden mb-6 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+      Demo Mode is enabled. Revenue figures represent simulated judge usage and wallet spend is intentionally bypassed.
+    </div>
+
     <!-- Stats cards -->
     <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-8">
       <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 text-center">
@@ -181,13 +185,18 @@
       const cost   = stats.total_cost    || 0;
       const profit = rev - cost;
       const margin = rev > 0 ? ((profit / rev) * 100) : 0;
+      if (stats.demo_mode) {
+        document.getElementById('demoBanner').classList.remove('hidden');
+      }
 
       document.getElementById('statOrders').textContent    = stats.total_orders || 0;
       document.getElementById('statCompleted').textContent = stats.completed || 0;
       document.getElementById('statRevenue').textContent   = '$' + rev.toFixed(2);
       document.getElementById('statCosts').textContent     = '$' + cost.toFixed(4);
       document.getElementById('statProfit').textContent    = '$' + profit.toFixed(2);
-      document.getElementById('statWallet').textContent    = '$' + parseFloat(stats.wallet_balance || 0).toFixed(2);
+      document.getElementById('statWallet').textContent    = stats.demo_mode
+        ? 'Demo'
+        : '$' + parseFloat(stats.wallet_balance || 0).toFixed(2);
 
       document.getElementById('marginPct').textContent = margin.toFixed(1) + '%';
       document.getElementById('marginBar').style.width = Math.min(margin, 100) + '%';

@@ -6,6 +6,7 @@
       "healthCheck": "/health",
       "env": {
         "SERVER_URL": "https://svc-mo07tm15otyzhfy0.buildwithlocus.com",
+        "DEMO_MODE": "true",
         "LOCUS_API_KEY": "",
         "ADMIN_KEY": "",
         "AGENTMAIL_INBOX_ID": ""

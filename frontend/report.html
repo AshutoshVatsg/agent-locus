@@ -61,6 +61,10 @@
       </div>
     </div>
 
+    <div id="demoBanner" class="hidden mb-4 rounded-xl border border-amber-500/30 bg-amber-500/10 p-4 text-sm text-amber-200">
+      Demo Mode is enabled. This report uses simulated intelligence and bypasses real checkout, paid API spend, and email delivery.
+    </div>
+
     <!-- Meta card -->
     <div id="metaCard" class="hidden mb-4 bg-slate-900 border border-slate-800 rounded-xl p-4">
       <div class="grid grid-cols-2 sm:grid-cols-5 gap-4 text-center text-sm mb-4">
@@ -274,10 +278,16 @@
 
     function render(o) {
       const tierLabels = { base: 'Base', pro: 'Pro', elite: 'Elite' };
+      if (o.demo_mode) {
+        document.getElementById('demoBanner').classList.remove('hidden');
+        document.getElementById('emailBtn').classList.add('hidden');
+      }
       document.getElementById('metaCompany').textContent = o.company_name;
       document.getElementById('metaDomain').textContent  = o.company_domain || '—';
       document.getElementById('metaTier').textContent    = tierLabels[o.tier] || o.tier || 'Base';
-      document.getElementById('metaCost').textContent    = '$' + (o.revenue || 0).toFixed(2) + ' USDC';
+      document.getElementById('metaCost').textContent    = o.demo_mode
+        ? '$' + (o.revenue || 0).toFixed(2) + ' simulated'
+        : '$' + (o.revenue || 0).toFixed(2) + ' USDC';
 
       if (o.status === 'AWAITING_PAYMENT') {
         document.getElementById('statusBar').classList.remove('hidden');
@@ -329,8 +339,10 @@
       } else {
         // PROCESSING
         document.getElementById('statusBar').classList.remove('hidden');
-        document.getElementById('statusTitle').textContent = 'Generating briefing…';
-        document.getElementById('statusSub').textContent   = 'Agent is cross-referencing live data sources. ~30 seconds.';
+        document.getElementById('statusTitle').textContent = o.demo_mode ? 'Preparing demo briefing…' : 'Generating briefing…';
+        document.getElementById('statusSub').textContent   = o.demo_mode
+          ? 'Loading sample intelligence for judges. A few seconds.'
+          : 'Agent is cross-referencing live data sources. ~30 seconds.';
         document.getElementById('stages').classList.remove('hidden');
 
         const breakdown = JSON.parse(o.cost_breakdown || '{}');
@@ -526,6 +538,11 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed');
+        if (data.demo_mode) {
+          clearTimeout(pollTimer);
+          loadOrder();
+          return;
+        }
         openCheckoutPopup(data.checkout_url);
         btn.disabled = false;
         btn.innerHTML = '<span style="font-size:1.1em">+</span> Add';
@@ -553,6 +570,11 @@
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.detail || 'Failed');
+        if (data.demo_mode) {
+          clearTimeout(pollTimer);
+          loadOrder();
+          return;
+        }
         openCheckoutPopup(data.checkout_url);
         btn.disabled = false;
         btn.textContent = 'Upgrade';

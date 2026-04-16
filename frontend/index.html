@@ -31,6 +31,10 @@
   <main class="flex-1 flex items-center justify-center px-4 py-12">
     <div class="max-w-2xl w-full">
 
+      <div id="demoBanner" class="hidden mb-6 rounded-2xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+        Demo Mode is enabled. Judges can use the real product flow without payment. Reports, add-ons, and upgrades use sample intelligence.
+      </div>
+
       <div class="text-center mb-10">
         <h1 class="text-4xl font-extrabold mb-3">
           Know your prospect<br/>
@@ -44,6 +48,11 @@
 
       <!-- Order Form -->
       <form id="orderForm" class="bg-slate-900 border border-slate-800 rounded-2xl p-6 space-y-5">
+
+        <div id="demoPresetWrap" class="hidden">
+          <label class="block text-sm font-medium text-amber-200 mb-2">Demo Presets</label>
+          <div id="demoPresetButtons" class="flex flex-wrap gap-2"></div>
+        </div>
 
         <div>
           <label class="block text-sm font-medium text-slate-300 mb-1">Company Name *</label>
@@ -186,6 +195,8 @@
 
   <script>
     const TIER_PRICES = { base: '0.75', pro: '1.75', elite: '3.25' };
+    let DEMO_MODE = false;
+    let DEMO_PRESETS = [];
     const form = document.getElementById('orderForm');
     const btn  = document.getElementById('submitBtn');
     const err  = document.getElementById('errorMsg');
@@ -203,6 +214,8 @@
         const res  = await fetch('/api/tiers');
         const data = await res.json();
         const tiers = data.tiers || {};
+        DEMO_MODE = !!data.demo_mode;
+        DEMO_PRESETS = data.demo_presets || [];
         Object.entries(tiers).forEach(([key, cfg]) => {
           TIER_PRICES[key] = parseFloat(cfg.price).toFixed(2);
           const card = document.querySelector(`[data-tier="${key}"]`);
@@ -211,9 +224,34 @@
             if (priceEl) priceEl.textContent = `$${TIER_PRICES[key]}`;
           }
         });
+        renderDemoState();
         selectTier(document.getElementById('selectedTier').value);
       } catch (_) {}
     })();
+
+    function renderDemoState() {
+      const banner = document.getElementById('demoBanner');
+      const wrap = document.getElementById('demoPresetWrap');
+      const buttons = document.getElementById('demoPresetButtons');
+      if (!DEMO_MODE) return;
+
+      banner.classList.remove('hidden');
+      wrap.classList.remove('hidden');
+      buttons.innerHTML = DEMO_PRESETS.map((preset, index) => `
+        <button type="button" onclick="applyDemoPreset(${index})"
+          class="rounded-full border border-amber-500/30 bg-slate-800 px-3 py-1.5 text-xs text-amber-200 hover:bg-slate-700 transition">
+          ${preset.company_name}
+        </button>
+      `).join('');
+    }
+
+    function applyDemoPreset(index) {
+      const preset = DEMO_PRESETS[index];
+      if (!preset) return;
+      document.getElementById('companyName').value = preset.company_name || '';
+      document.getElementById('companyDomain').value = preset.company_domain || '';
+      document.getElementById('context').value = preset.context || '';
+    }
 
     form.addEventListener('submit', async (e) => {
       e.preventDefault();
@@ -240,6 +278,11 @@
 
         if (!res.ok) {
           throw new Error(data.detail || data.error || 'Request failed');
+        }
+
+        if (data.demo_mode) {
+          window.location.href = `/report/${data.order_id}`;
+          return;
         }
 
         // Open checkout in a compact popup instead of full redirect

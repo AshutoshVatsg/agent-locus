@@ -21,6 +21,7 @@ from prompts import (
 )
 from database import update_order, get_order
 from config import TIER_CONFIG, ADDONS
+from demo_data import build_demo_addon_section, build_demo_raw_data, build_demo_report, find_demo_preset
 
 log = logging.getLogger("pipeline")
 
@@ -41,6 +42,105 @@ ENRICHMENT_BUDGET = {
     "pro":   0.20,   # $1.75 tier — moderate enrichment
     "elite": 0.40,   # $3.25 tier — aggressive enrichment
 }
+
+DEMO_PIPELINE_DELAY = 2.5
+DEMO_MUTATION_DELAY = 1.0
+
+
+async def run_demo_pipeline(order_id: str, company: str, domain: str,
+                            context: str, tier: str = "base"):
+    """Generate a deterministic demo report without calling paid APIs."""
+    try:
+        await asyncio.sleep(DEMO_PIPELINE_DELAY)
+        preset = find_demo_preset(company, domain)
+        data = build_demo_raw_data(preset, tier)
+        report = build_demo_report(preset, tier, context)
+        enrichment_log = [
+            {
+                "action": "Loaded demo intelligence pack",
+                "reason": "Demo mode bypasses live checkout and paid research APIs for judges",
+                "result": "Simulated company, tech, news, hiring, and people signals were injected",
+                "cost": 0.0,
+            }
+        ]
+
+        update_order(
+            order_id,
+            company_domain=preset["company_domain"],
+            company_data=json.dumps(data["company_data"], default=str),
+            people_data=json.dumps(data["people_data"], default=str),
+            tech_data=json.dumps(data["tech_data"], default=str),
+            website_data=json.dumps(data["website_data"], default=str),
+            careers_data=json.dumps(data["careers_data"], default=str),
+            blog_data=json.dumps(data["blog_data"], default=str),
+            news_data=json.dumps(data["news_data"], default=str),
+            hiring_data=json.dumps(data["hiring_data"], default=str),
+            competitor_data=json.dumps(data["competitor_data"], default=str),
+            enrichment_log=json.dumps(enrichment_log),
+            report=report,
+            total_cost=0.0,
+            cost_breakdown=json.dumps({"demo_mode": 0.0}),
+            status="COMPLETED",
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
+    except Exception as exc:
+        log.exception("Demo pipeline failed for %s", order_id)
+        update_order(order_id, status="FAILED", error=f"Demo pipeline failed: {exc}")
+
+
+async def run_demo_addon(order_id: str, addon_key: str):
+    """Append a canned add-on section during demo mode."""
+    order = get_order(order_id)
+    if not order:
+        return
+
+    try:
+        await asyncio.sleep(DEMO_MUTATION_DELAY)
+        preset = find_demo_preset(order["company_name"], order["company_domain"])
+        section_md = build_demo_addon_section(addon_key, preset, order.get("context") or "")
+
+        purchased = json.loads(order.get("addons_purchased") or "[]")
+        if addon_key not in purchased:
+            purchased.append(addon_key)
+
+        update_order(
+            order_id,
+            status="COMPLETED",
+            report=(order.get("report") or "").rstrip() + "\n\n" + section_md,
+            addons_purchased=json.dumps(purchased),
+            revenue=(order.get("revenue") or 0) + ADDONS[addon_key]["price"],
+            pending_action="",
+        )
+    except Exception as exc:
+        log.exception("Demo add-on failed for %s", order_id)
+        update_order(order_id, status="ADDON_FAILED", error=f"Demo add-on failed: {exc}", pending_action="")
+
+
+async def run_demo_upgrade(order_id: str, target_tier: str):
+    """Replace the report with the target tier's canned report during demo mode."""
+    order = get_order(order_id)
+    if not order:
+        return
+
+    try:
+        await asyncio.sleep(DEMO_MUTATION_DELAY)
+        preset = find_demo_preset(order["company_name"], order["company_domain"])
+        report = build_demo_report(preset, target_tier, order.get("context") or "")
+
+        from config import get_upgrade_price
+
+        update_order(
+            order_id,
+            status="COMPLETED",
+            tier=target_tier,
+            report=report,
+            revenue=(order.get("revenue") or 0) + get_upgrade_price(order.get("tier", "base"), target_tier),
+            pending_action="",
+            completed_at=datetime.now(timezone.utc).isoformat(),
+        )
+    except Exception as exc:
+        log.exception("Demo upgrade failed for %s", order_id)
+        update_order(order_id, status="UPGRADE_FAILED", error=f"Demo upgrade failed: {exc}", pending_action="")
 
 
 # ═══════════════════════════════════════════════════════════════════
